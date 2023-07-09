@@ -120,7 +120,7 @@ module "alb" {
 
   https_listeners = [{
     port               = 443
-    certificate_arn    = var.route53_hosted_zone != null ? module.acm[0].acm_certificate_arn : aws_acm_certificate.self_signed[0].arn
+    certificate_arn    = local.https_listener_cert
     target_group_index = 0
   }]
 
@@ -348,7 +348,7 @@ module "acm" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 4.0"
 
-  count = var.route53_hosted_zone != null ? 1 : 0
+  count = local.create_acm_cert ? 1 : 0
 
   domain_name         = local.domain
   zone_id             = var.route53_hosted_zone

@@ -49,5 +49,11 @@ variable "route53_hosted_zone" {
 variable "odoo_domain" {
   default     = null
   type        = string
-  description = "If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain."
+  description = "If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain"
+}
+
+variable "acm_cert" {
+  default     = null
+  type        = string
+  description = "ACM cert to assign to the load balancer, util when managing domain externally or to reuse a valid cert for a domain"
 }

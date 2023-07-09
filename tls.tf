@@ -2,14 +2,14 @@
 # SELF SIGNED CERT
 ######################################################################################
 resource "tls_private_key" "ca_key" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
   algorithm = "RSA"
   rsa_bits  = 2048
 }
 
 resource "tls_self_signed_cert" "ca_cert" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
 #   key_algorithm         = "RSA"
   private_key_pem       = tls_private_key.ca_key[0].private_key_pem
@@ -29,14 +29,14 @@ resource "tls_self_signed_cert" "ca_cert" {
 }
 
 resource "tls_private_key" "alb_key" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
   algorithm = "RSA"
   rsa_bits  = "2048"
 }
 
 resource "tls_cert_request" "alb_cert_req" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
 #   key_algorithm   = "RSA"
   private_key_pem = tls_private_key.alb_key[0].private_key_pem
@@ -48,7 +48,7 @@ resource "tls_cert_request" "alb_cert_req" {
 }
 
 resource "tls_locally_signed_cert" "alb_locally_signed_cert" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
   cert_request_pem      = tls_cert_request.alb_cert_req[0].cert_request_pem
 #   ca_key_algorithm      = "RSA"
@@ -64,7 +64,7 @@ resource "tls_locally_signed_cert" "alb_locally_signed_cert" {
 }
 
 resource "aws_acm_certificate" "self_signed" {
-  count = var.route53_hosted_zone != null ? 0 : 1
+  count = local.create_locally_signed_cert ? 1 : 0
 
   private_key       = tls_private_key.alb_key[0].private_key_pem
   certificate_body  = tls_locally_signed_cert.alb_locally_signed_cert[0].cert_pem
