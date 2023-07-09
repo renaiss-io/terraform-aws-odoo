@@ -112,6 +112,14 @@ module "alb" {
     },
   ]
 
+  https_listeners = var.route53_hosted_zone != null ? [
+    {
+      port               = 443
+      certificate_arn    = module.acm[0].acm_certificate_arn
+      target_group_index = 0
+    },
+  ] : []
+
   target_groups = [
     {
       name             = var.name
@@ -135,7 +143,7 @@ module "alb_sg" {
   description         = "Service security group"
   vpc_id              = module.vpc.vpc_id
   tags                = local.tags
-  ingress_rules       = ["http-80-tcp"]
+  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
   ingress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules        = ["all-all"]
   egress_cidr_blocks  = module.vpc.private_subnets_cidr_blocks
@@ -315,5 +323,49 @@ module "ecs_service" {
 
       cidr_blocks = ["0.0.0.0/0"]
     }
+  }
+}
+
+
+######################################################################################
+# DOMAIN
+######################################################################################
+data "aws_route53_zone" "domain" {
+  count = var.route53_hosted_zone != null ? 1 : 0
+
+  zone_id = var.route53_hosted_zone
+}
+
+locals {
+  domain = var.route53_hosted_zone != null ? var.odoo_domain != null ? var.odoo_domain : data.aws_route53_zone.domain[0].name : null
+}
+
+module "acm" {
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 4.0"
+
+  count = var.route53_hosted_zone != null ? 1 : 0
+
+  domain_name         = local.domain
+  zone_id             = var.route53_hosted_zone
+  tags                = local.tags
+  wait_for_validation = true
+
+  subject_alternative_names = [
+    "*.${local.domain}"
+  ]
+}
+
+resource "aws_route53_record" "www" {
+  count = var.route53_hosted_zone != null ? 1 : 0
+
+  zone_id = var.route53_hosted_zone
+  name    = local.domain
+  type    = "A"
+
+  alias {
+    name                   = module.alb.lb_dns_name
+    zone_id                = module.alb.lb_zone_id
+    evaluate_target_health = true
   }
 }

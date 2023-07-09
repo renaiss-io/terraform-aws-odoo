@@ -31,3 +31,17 @@ variable "db_instance_type" {
   description = "Instance type for DB instances"
 }
 
+######################################################################################
+# DOMAIN
+######################################################################################
+variable "route53_hosted_zone" {
+  default     = null
+  type        = string
+  description = "If provided, the hosted zone is used as domain for odoo"
+}
+
+variable "odoo_domain" {
+  default     = null
+  type        = string
+  description = "If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain."
+}
