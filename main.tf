@@ -304,5 +304,14 @@ module "ecs_service" {
       description              = "Service port"
       source_security_group_id = module.alb_sg.security_group_id
     }
+
+    outbound = {
+      protocol  = "tcp"
+      from_port = local.db_port
+      to_port   = local.db_port
+      type      = "egress"
+
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
 }
