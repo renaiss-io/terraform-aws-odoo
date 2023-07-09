@@ -272,7 +272,7 @@ module "ecs_service" {
 
       environment = [
         { "name" : "DB_PORT_5432_TCP_ADDR", "value" : module.db.db_instance_address },
-        { "name" : "DB_PORT_5432_TCP_PORT", "value" : local.db_port },
+        { "name" : "DB_PORT_5432_TCP_PORT", "value" : module.db.db_instance_port },
         { "name" : "DB_ENV_POSTGRES_USER", "value" : module.db.db_instance_username },
       ]
 
