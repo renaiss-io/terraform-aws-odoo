@@ -25,6 +25,12 @@ variable "vpc_cidr" {
 ######################################################################################
 # DB
 ######################################################################################
+variable "db_size" {
+  default     = 20
+  type        = number
+  description = "DB size"
+}
+
 variable "db_instance_type" {
   default     = "db.t4g.small"
   type        = string

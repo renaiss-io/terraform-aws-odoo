@@ -40,12 +40,12 @@ module "db" {
   create_db_option_group         = false
   create_db_parameter_group      = false
   engine                         = "postgres"
-  engine_version                 = "14"
   family                         = "postgres14"
+  db_name                        = "postgres" // DB named odoo must not be created on init
+  engine_version                 = "14"
   major_engine_version           = "14"
   instance_class                 = var.db_instance_type
-  allocated_storage              = 20
-  db_name                        = var.name
+  allocated_storage              = var.db_size
   username                       = var.name
   port                           = local.db_port
   db_subnet_group_name           = module.vpc.database_subnet_group
