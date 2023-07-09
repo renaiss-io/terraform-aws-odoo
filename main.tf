@@ -75,7 +75,7 @@ module "db_security_group" {
   version = "~> 5.0"
 
   name        = var.name
-  description = "Complete PostgreSQL example security group"
+  description = "DB security group"
   vpc_id      = module.vpc.vpc_id
   tags        = local.tags
 
