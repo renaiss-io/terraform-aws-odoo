@@ -276,10 +276,12 @@ module "ecs_service" {
         { "name" : "DB_ENV_POSTGRES_USER", "value" : module.db.db_instance_username },
       ]
 
+      # RDS saves credentials in a json like { "username": "", "password": "" }
+      # ECS allows to parse the secret pulled from AWS before setting the environment variable
       secrets = [
         {
           "name" : "DB_ENV_POSTGRES_PASSWORD",
-          "valueFrom" : tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]
+          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
         }
       ]
     }
