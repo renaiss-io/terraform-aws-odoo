@@ -56,6 +56,8 @@ module "db" {
   tags                           = local.tags
 }
 
+# Query secret created by RDS cause the official RDS module does not expose it
+# https://github.com/terraform-aws-modules/terraform-aws-rds/issues/501
 data "aws_secretsmanager_secrets" "db_master_password" {
   filter {
     name   = "owning-service"
