@@ -116,6 +116,11 @@ module "alb" {
       backend_protocol = "HTTP"
       backend_port     = local.odoo_port
       target_type      = "ip"
+
+      # odoo server returns a 303 in /
+      health_check = {
+        matcher = 303
+      }
     },
   ]
 }
