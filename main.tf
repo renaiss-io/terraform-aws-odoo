@@ -245,15 +245,28 @@ module "ecs_service" {
     }
   }
 
+  volume = {
+    tmp = {}
+  }
+
   container_definitions = {
     odoo = {
-      image = "odoo:latest"
+      image                    = "odoo:latest"
+      readonly_root_filesystem = false
 
       port_mappings = [
         {
           name          = var.name
           containerPort = local.odoo_port
           protocol      = "tcp"
+        }
+      ]
+
+      # odoo requires a tmp folder
+      mount_points = [
+        {
+          sourceVolume  = "tmp",
+          containerPath = "/tmp"
         }
       ]
 
