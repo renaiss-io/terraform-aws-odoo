@@ -106,19 +106,23 @@ module "alb" {
 
   http_tcp_listeners = [
     {
-      port               = 80
-      protocol           = "HTTP"
-      target_group_index = 0
+      port        = 80
+      protocol    = "HTTP"
+      action_type = "redirect"
+
+      redirect = {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
     },
   ]
 
-  https_listeners = var.route53_hosted_zone != null ? [
-    {
-      port               = 443
-      certificate_arn    = module.acm[0].acm_certificate_arn
-      target_group_index = 0
-    },
-  ] : []
+  https_listeners = [{
+    port               = 443
+    certificate_arn    = var.route53_hosted_zone != null ? module.acm[0].acm_certificate_arn : aws_acm_certificate.self_signed[0].arn
+    target_group_index = 0
+  }]
 
   target_groups = [
     {
