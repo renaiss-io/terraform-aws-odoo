@@ -23,16 +23,10 @@ content: |-
 
   ## Usage
 
-  ### Simple usage
-
   ```hcl
-  {{ include ".config/simple.tf" }}
+  {{ include ".config/example.tf" }}
   ```
 
-  ### With custom domain
-  ```hcl
-  {{ include ".config/custom_domain.tf" }}
-  ```
 
   {{ .Inputs }}
 
