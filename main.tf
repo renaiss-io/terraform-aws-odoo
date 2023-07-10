@@ -210,6 +210,42 @@ module "autoscaling_sg" {
 
 
 ######################################################################################
+# EFS
+######################################################################################
+module "efs" {
+  source  = "terraform-aws-modules/efs/aws"
+  version = "~> 1.2"
+
+  name                       = var.name
+  tags                       = var.tags
+  mount_targets              = { for k, v in zipmap(local.azs, module.vpc.private_subnets) : k => { subnet_id = v } }
+  security_group_vpc_id      = module.vpc.vpc_id
+  security_group_description = "Security group for odoo EFS"
+  attach_policy              = false
+
+  security_group_rules = {
+    vpc = {
+      description = "NFS ingress from VPC"
+      cidr_blocks = [module.vpc.vpc_cidr_block] // TODO: move to ecs container SG
+    }
+  }
+
+  access_points = {
+    filestore = {
+      root_directory = {
+        path = "/var/lib/odoo/filestore"
+        creation_info = {
+          owner_gid   = 1001
+          owner_uid   = 1001
+          permissions = "777"
+        }
+      }
+    }
+  }
+}
+
+
+######################################################################################
 # ECS
 ######################################################################################
 module "ecs_cluster" {
@@ -261,6 +297,17 @@ module "ecs_service" {
 
   volume = {
     tmp = {}
+
+    filestore = {
+      efs_volume_configuration = {
+        file_system_id     = module.efs.id
+        transit_encryption = "ENABLED"
+
+        authorization_config = {
+          access_point_id = module.efs.access_points["filestore"].id
+        }
+      }
+    }
   }
 
   container_definitions = {
@@ -276,11 +323,14 @@ module "ecs_service" {
         }
       ]
 
-      # odoo requires a tmp folder
       mount_points = [
         {
           sourceVolume  = "tmp",
-          containerPath = "/tmp"
+          containerPath = "/tmp" # Local volume for tmp files
+        },
+        {
+          sourceVolume  = "filestore",
+          containerPath = "/var/lib/odoo/filestore" # Save files in EFS
         }
       ]
 
