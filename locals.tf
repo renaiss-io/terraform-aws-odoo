@@ -18,9 +18,4 @@ locals {
     :
     var.acm_cert
   )
-
-  tags = merge(var.tags, {
-    App    = "odoo"
-    Module = "https://github.com/renaiss-io/terraform-aws-odoo"
-  })
 }

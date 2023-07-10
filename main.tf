@@ -13,7 +13,7 @@ module "vpc" {
 
   name = var.name
   cidr = var.vpc_cidr
-  tags = local.tags
+  tags = var.tags
 
   azs              = local.azs
   public_subnets   = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k)]
@@ -53,7 +53,7 @@ module "db" {
   maintenance_window             = "Mon:00:00-Mon:03:00"
   backup_window                  = "03:00-06:00"
   backup_retention_period        = 0
-  tags                           = local.tags
+  tags                           = var.tags
 }
 
 # Query secret created by RDS cause the official RDS module does not expose it
@@ -77,7 +77,7 @@ module "db_security_group" {
   name        = var.name
   description = "DB security group"
   vpc_id      = module.vpc.vpc_id
-  tags        = local.tags
+  tags        = var.tags
 
   ingress_with_cidr_blocks = [
     {
@@ -102,7 +102,7 @@ module "alb" {
   vpc_id             = module.vpc.vpc_id
   subnets            = module.vpc.public_subnets
   security_groups    = [module.alb_sg.security_group_id]
-  tags               = local.tags
+  tags               = var.tags
 
   http_tcp_listeners = [
     {
@@ -146,7 +146,7 @@ module "alb_sg" {
   name                = "${var.name}-service"
   description         = "Service security group"
   vpc_id              = module.vpc.vpc_id
-  tags                = local.tags
+  tags                = var.tags
   ingress_rules       = ["http-80-tcp", "https-443-tcp"]
   ingress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules        = ["all-all"]
@@ -163,7 +163,7 @@ module "autoscaling" {
   security_groups                 = [module.autoscaling_sg.security_group_id]
   ignore_desired_capacity_changes = true
   protect_from_scale_in           = true // Required for managed_termination_protection = "ENABLED"
-  tags                            = local.tags
+  tags                            = var.tags
 
   create_iam_instance_profile = true
   iam_role_name               = "${var.name}-ecs"
@@ -181,7 +181,7 @@ module "autoscaling" {
 
   user_data = base64encode(templatefile("${path.module}/ecs/ecs.sh", {
     name = var.name
-    tags = jsonencode(local.tags)
+    tags = jsonencode(var.tags)
   }))
 
   autoscaling_group_tags = {
@@ -197,7 +197,7 @@ module "autoscaling_sg" {
   description  = "Autoscaling group security group"
   vpc_id       = module.vpc.vpc_id
   egress_rules = ["all-all"]
-  tags         = local.tags
+  tags         = var.tags
 
   number_of_computed_ingress_with_source_security_group_id = 1
   computed_ingress_with_source_security_group_id = [
@@ -217,7 +217,7 @@ module "ecs_cluster" {
   version = "~> 5.2"
 
   cluster_name                          = var.name
-  tags                                  = local.tags
+  tags                                  = var.tags
   default_capacity_provider_use_fargate = false
 
   autoscaling_capacity_providers = {
@@ -246,7 +246,7 @@ module "ecs_service" {
 
   name                     = var.name
   cluster_arn              = module.ecs_cluster.cluster_arn
-  tags                     = local.tags
+  tags                     = var.tags
   memory                   = 800
   subnet_ids               = module.vpc.private_subnets
   requires_compatibilities = ["EC2"]
@@ -352,7 +352,7 @@ module "acm" {
 
   domain_name         = local.domain
   zone_id             = var.route53_hosted_zone
-  tags                = local.tags
+  tags                = var.tags
   wait_for_validation = true
 
   subject_alternative_names = [
