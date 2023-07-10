@@ -63,3 +63,12 @@ variable "acm_cert" {
   type        = string
   description = "ACM cert to assign to the load balancer, util when managing domain externally or to reuse a valid cert for a domain"
 }
+
+######################################################################################
+# ODOO
+######################################################################################
+variable "odoo_version" {
+  default     = "latest"
+  type        = string
+  description = "Version of odoo docker image to use"
+}

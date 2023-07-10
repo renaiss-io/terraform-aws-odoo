@@ -265,7 +265,7 @@ module "ecs_service" {
 
   container_definitions = {
     odoo = {
-      image                    = "odoo:latest"
+      image                    = "odoo:${var.odoo_version}"
       readonly_root_filesystem = false
 
       port_mappings = [
