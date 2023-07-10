@@ -1,0 +1,39 @@
+formatter: "markdown"
+
+header-from: ".config/header.md"
+
+output:
+  file: "README.md"
+
+sort:
+  enabled: true
+  by: required
+
+settings:
+  read-comments: false
+  hide-empty: true
+  escape: false
+
+content: |-
+  {{ .Header }}
+
+  {{ .Requirements }}
+
+  {{ .Modules }}
+
+  ## Usage
+
+  ### Simple usage
+
+  ```hcl
+  {{ include ".config/simple.tf" }}
+  ```
+
+  ### With custom domain
+  ```hcl
+  {{ include ".config/custom_domain.tf" }}
+  ```
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}

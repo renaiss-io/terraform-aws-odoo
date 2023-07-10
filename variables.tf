@@ -10,7 +10,7 @@ variable "tags" {
 variable "name" {
   default     = "odoo"
   type        = string
-  description = "A to use for all resources"
+  description = "A name to use in all resources"
 }
 
 ######################################################################################
@@ -22,13 +22,19 @@ variable "vpc_cidr" {
   description = "IP range to assign to VPC"
 }
 
+variable "deploy_nat" { // TODO: implement logic to use nat in private subnets
+  default     = false
+  type        = bool
+  description = "Deploy NAT for private subnets"
+}
+
 ######################################################################################
 # DB
 ######################################################################################
 variable "db_size" {
   default     = 20
   type        = number
-  description = "DB size"
+  description = "DB size (in GB)"
 }
 
 variable "db_instance_type" {
