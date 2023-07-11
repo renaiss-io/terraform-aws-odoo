@@ -26,6 +26,6 @@ module "odoo" {
 module "odoo" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git?ref=v0.1.0"
 
-  route53_hosted_zone = "Z01208793QY6JAD0UY432"
-  odoo_domain = "odoo.example.com" // must be a subdomain of the root domain
+  route53_hosted_zone = "Z01208793QY6JAD0UY432"  // hosted zone for example.com
+  odoo_domain         = "odoo.example.com"       // must be a subdomain of the root domain
 }

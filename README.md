@@ -61,8 +61,8 @@ module "odoo" {
 module "odoo" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git?ref=v0.1.0"
 
-  route53_hosted_zone = "Z01208793QY6JAD0UY432"
-  odoo_domain = "odoo.example.com" // must be a subdomain of the root domain
+  route53_hosted_zone = "Z01208793QY6JAD0UY432"  // hosted zone for example.com
+  odoo_domain         = "odoo.example.com"       // must be a subdomain of the root domain
 }
 ```
 
@@ -77,7 +77,7 @@ module "odoo" {
 | <a name="input_deploy_nat"></a> [deploy_nat](#input_deploy_nat) | Deploy NAT for private subnets | `bool` | `false` | no |
 | <a name="input_name"></a> [name](#input_name) | A name to use in all resources | `string` | `"odoo"` | no |
 | <a name="input_odoo_domain"></a> [odoo_domain](#input_odoo_domain) | If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain | `string` | `null` | no |
-| <a name="input_odoo_version"></a> [odoo_version](#input_odoo_version) | Version of odoo docker image to use | `string` | `"latest"` | no |
+| <a name="input_odoo_version"></a> [odoo_version](#input_odoo_version) | Version of odoo docker image to use | `string` | `"16"` | no |
 | <a name="input_route53_hosted_zone"></a> [route53_hosted_zone](#input_route53_hosted_zone) | If provided, the hosted zone is used as domain for odoo | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input_tags) | A mapping of tags to assign to resources | `map(string)` | `{}` | no |
 | <a name="input_vpc_cidr"></a> [vpc_cidr](#input_vpc_cidr) | IP range to assign to VPC | `string` | `"10.0.0.0/16"` | no |
