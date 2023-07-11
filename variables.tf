@@ -68,7 +68,7 @@ variable "acm_cert" {
 # ODOO
 ######################################################################################
 variable "odoo_version" {
-  default     = "latest"
+  default     = "16"
   type        = string
   description = "Version of odoo docker image to use"
 }
