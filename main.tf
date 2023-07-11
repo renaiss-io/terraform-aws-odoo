@@ -371,8 +371,8 @@ module "ecs_service" {
 
     outbound = {
       protocol  = "tcp"
-      from_port = local.db_port
-      to_port   = local.db_port
+      from_port = "0"
+      to_port   = "65535"
       type      = "egress"
 
       cidr_blocks = ["0.0.0.0/0"]
