@@ -1,4 +1,4 @@
-output "default_dns" {
-  value       = module.alb.lb_dns_name
+output "dns" {
+  value       = local.domain
   description = "DNS of the load balancer to access odoo"
 }

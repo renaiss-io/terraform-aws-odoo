@@ -41,7 +41,7 @@ module "db" {
   create_db_parameter_group      = false
   engine                         = "postgres"
   family                         = "postgres14"
-  db_name                        = "postgres" // DB named odoo must not be created on init
+  db_name                        = "postgres"
   engine_version                 = "14"
   major_engine_version           = "14"
   instance_class                 = var.db_instance_type
@@ -74,24 +74,25 @@ module "db_security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
 
-  name        = var.name
-  description = "DB security group"
-  vpc_id      = module.vpc.vpc_id
-  tags        = var.tags
+  name            = "${var.name}-db"
+  use_name_prefix = false
+  description     = "DB security group"
+  vpc_id          = module.vpc.vpc_id
+  tags            = var.tags
 
-  ingress_with_cidr_blocks = [
+  ingress_with_source_security_group_id = [
     {
-      from_port   = local.db_port
-      to_port     = local.db_port
-      protocol    = "tcp"
-      description = "server access"
-      cidr_blocks = module.vpc.vpc_cidr_block
+      from_port                = local.db_port
+      to_port                  = local.db_port
+      protocol                 = "tcp"
+      description              = "EC2 ingress"
+      source_security_group_id = module.autoscaling_sg.security_group_id
     },
   ]
 }
 
 ######################################################################################
-# EC2
+# ALB
 ######################################################################################
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
@@ -101,67 +102,82 @@ module "alb" {
   load_balancer_type = "application"
   vpc_id             = module.vpc.vpc_id
   subnets            = module.vpc.public_subnets
-  security_groups    = [module.alb_sg.security_group_id]
   tags               = var.tags
 
-  http_tcp_listeners = [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+  security_group_name            = "${var.name}-alb"
+  security_group_use_name_prefix = false
+  security_group_description     = "ALB security group"
 
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
+  security_group_rules = [
+    {
+      protocol    = "tcp"
+      type        = "ingress"
+      from_port   = "80"
+      to_port     = "80"
+      description = "HTTP ingress"
+      cidr_blocks = ["0.0.0.0/0"]
     },
+    {
+      protocol    = "tcp"
+      type        = "ingress"
+      from_port   = "443"
+      to_port     = "443"
+      description = "HTTPs ingress"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      protocol                 = "tcp"
+      type                     = "egress"
+      from_port                = local.odoo_port
+      to_port                  = local.odoo_port
+      description              = "Odoo health check"
+      source_security_group_id = module.autoscaling_sg.security_group_id
+    }
   ]
 
-  https_listeners = [{
-    port               = 443
-    certificate_arn    = local.https_listener_cert
-    target_group_index = 0
+  http_tcp_listeners = [{
+    port        = 80
+    protocol    = "HTTP"
+    action_type = "redirect"
+
+    redirect = {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }]
 
-  target_groups = [
-    {
-      name             = var.name
-      backend_protocol = "HTTP"
-      backend_port     = local.odoo_port
-      target_type      = "ip"
+  https_listeners = [{
+    port            = 443
+    certificate_arn = local.https_listener_cert
+  }]
 
-      health_check = {
-        matcher = "200-399"
-      }
-    },
-  ]
+  target_groups = [{
+    name             = var.name
+    backend_protocol = "HTTP"
+    backend_port     = local.odoo_port
+    target_type      = "instance"
+
+    health_check = {
+      matcher = "200-399"
+    }
+  }]
 }
 
-module "alb_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 5.0"
 
-  name                = "${var.name}-service"
-  description         = "Service security group"
-  vpc_id              = module.vpc.vpc_id
-  tags                = var.tags
-  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-  egress_rules        = ["all-all"]
-  egress_cidr_blocks  = module.vpc.private_subnets_cidr_blocks
-}
-
+######################################################################################
+# EC2
+######################################################################################
 module "autoscaling" {
   source  = "terraform-aws-modules/autoscaling/aws"
   version = "~> 6.5"
 
   name                            = var.name
   image_id                        = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
-  instance_type                   = "t3.micro"
+  instance_type                   = var.ecs_instance_type
   security_groups                 = [module.autoscaling_sg.security_group_id]
   ignore_desired_capacity_changes = true
-  protect_from_scale_in           = true // Required for managed_termination_protection = "ENABLED"
+  protect_from_scale_in           = true
   tags                            = var.tags
 
   create_iam_instance_profile = true
@@ -192,17 +208,20 @@ module "autoscaling_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
 
-  name         = var.name
-  description  = "Autoscaling group security group"
-  vpc_id       = module.vpc.vpc_id
-  egress_rules = ["all-all"]
-  tags         = var.tags
+  name            = "${var.name}-ec2"
+  use_name_prefix = false
+  description     = "EC2 security group"
+  vpc_id          = module.vpc.vpc_id
+  egress_rules    = ["all-all"]
+  tags            = var.tags
 
-  number_of_computed_ingress_with_source_security_group_id = 1
-  computed_ingress_with_source_security_group_id = [
+  ingress_with_source_security_group_id = [
     {
-      rule                     = "http-80-tcp"
-      source_security_group_id = module.alb_sg.security_group_id
+      from_port                = local.odoo_port
+      to_port                  = local.odoo_port
+      protocol                 = "tcp"
+      description              = "ALB ingress"
+      source_security_group_id = module.alb.security_group_id
     }
   ]
 }
@@ -215,24 +234,27 @@ module "efs" {
   source  = "terraform-aws-modules/efs/aws"
   version = "~> 1.2"
 
-  name                       = var.name
-  tags                       = var.tags
-  mount_targets              = { for k, v in zipmap(local.azs, module.vpc.private_subnets) : k => { subnet_id = v } }
+  name          = var.name
+  mount_targets = { for k, v in zipmap(local.azs, module.vpc.private_subnets) : k => { subnet_id = v } }
+  attach_policy = false
+  tags          = var.tags
+
+  security_group_name        = "${var.name}-efs"
+  security_group_description = "EFS security group"
   security_group_vpc_id      = module.vpc.vpc_id
-  security_group_description = "Security group for odoo EFS"
-  attach_policy              = false
 
   security_group_rules = {
     vpc = {
-      description = "NFS ingress from VPC"
-      cidr_blocks = [module.vpc.vpc_cidr_block] // TODO: move to ecs container SG
+      description              = "EC2 ingress"
+      source_security_group_id = module.autoscaling_sg.security_group_id
     }
   }
 
   access_points = {
     filestore = {
       root_directory = {
-        path = "/var/lib/odoo/filestore"
+        path = local.filestore_path
+
         creation_info = {
           owner_gid   = 1001
           owner_uid   = 1001
@@ -261,9 +283,9 @@ module "ecs_cluster" {
       managed_termination_protection = "ENABLED"
 
       managed_scaling = {
+        status                    = "ENABLED"
         maximum_scaling_step_size = 5
         minimum_scaling_step_size = 1
-        status                    = "ENABLED"
         target_capacity           = 60
       }
 
@@ -281,10 +303,11 @@ module "ecs_service" {
 
   name                     = var.name
   cluster_arn              = module.ecs_cluster.cluster_arn
-  tags                     = var.tags
-  memory                   = 800
   subnet_ids               = module.vpc.private_subnets
+  memory                   = 800
   requires_compatibilities = ["EC2"]
+  network_mode             = "host"
+  tags                     = var.tags
 
   capacity_provider_strategy = {
     provider = {
@@ -323,13 +346,13 @@ module "ecs_service" {
       ]
 
       mount_points = [
-        {
+        { # Local volume for tmp files
           sourceVolume  = "tmp",
-          containerPath = "/tmp" # Local volume for tmp files
+          containerPath = "/tmp"
         },
-        {
+        { # Save files in EFS
           sourceVolume  = "filestore",
-          containerPath = "/var/lib/odoo/filestore" # Save files in EFS
+          containerPath = "/var/lib/odoo/filestore"
         }
       ]
 
@@ -341,12 +364,10 @@ module "ecs_service" {
 
       # RDS saves credentials in a json like { "username": "", "password": "" }
       # ECS allows to parse the secret pulled from AWS before setting the environment variable
-      secrets = [
-        {
-          "name" : "DB_ENV_POSTGRES_PASSWORD",
-          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
-        }
-      ]
+      secrets = [{
+        "name" : "DB_ENV_POSTGRES_PASSWORD",
+        "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
+      }]
     }
   }
 
@@ -355,26 +376,6 @@ module "ecs_service" {
       target_group_arn = element(module.alb.target_group_arns, 0)
       container_name   = var.name
       container_port   = local.odoo_port
-    }
-  }
-
-  security_group_rules = {
-    alb_http_ingress = {
-      type                     = "ingress"
-      from_port                = local.odoo_port
-      to_port                  = local.odoo_port
-      protocol                 = "tcp"
-      description              = "Service port"
-      source_security_group_id = module.alb_sg.security_group_id
-    }
-
-    outbound = {
-      protocol  = "tcp"
-      from_port = "0"
-      to_port   = "65535"
-      type      = "egress"
-
-      cidr_blocks = ["0.0.0.0/0"]
     }
   }
 }
@@ -399,14 +400,11 @@ module "acm" {
 
   count = local.create_acm_cert ? 1 : 0
 
-  domain_name         = local.domain
-  zone_id             = var.route53_hosted_zone
-  tags                = var.tags
-  wait_for_validation = true
-
-  subject_alternative_names = [
-    "*.${local.domain}"
-  ]
+  domain_name               = local.domain
+  zone_id                   = var.route53_hosted_zone
+  tags                      = var.tags
+  wait_for_validation       = true
+  subject_alternative_names = ["*.${local.domain}"]
 }
 
 resource "aws_route53_record" "www" {

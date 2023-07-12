@@ -2,6 +2,8 @@ locals {
   db_port   = 5432
   odoo_port = 8069
 
+  filestore_path = "/var/lib/odoo/filestore"
+
   # If not external cert or domain, create locally signed cert
   create_locally_signed_cert = var.acm_cert == null && var.route53_hosted_zone == null
   # If not external cert and domain provided, create and validate acm cert
