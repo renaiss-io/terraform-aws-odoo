@@ -360,14 +360,26 @@ module "ecs_service" {
         { "name" : "DB_PORT_5432_TCP_ADDR", "value" : module.db.db_instance_address },
         { "name" : "DB_PORT_5432_TCP_PORT", "value" : module.db.db_instance_port },
         { "name" : "DB_ENV_POSTGRES_USER", "value" : module.db.db_instance_username },
+        { "name" : "SMTP_SERVER", "value" : "email-smtp.${data.aws_region.current.name}.amazonaws.com" },
+        { "name" : "SMTP_PORT", "value" : "587" },
       ]
 
       # RDS saves credentials in a json like { "username": "", "password": "" }
       # ECS allows to parse the secret pulled from AWS before setting the environment variable
-      secrets = [{
-        "name" : "DB_ENV_POSTGRES_PASSWORD",
-        "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
-      }]
+      secrets = [
+        {
+          "name" : "DB_ENV_POSTGRES_PASSWORD",
+          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
+        },
+        {
+          "name" : "SMTP_USER",
+          "valueFrom" : "${aws_secretsmanager_secret.ses_user.arn}:user::"
+        },
+        {
+          "name" : "SMTP_PASS",
+          "valueFrom" : "${aws_secretsmanager_secret.ses_user.arn}:password::"
+        }
+      ]
     }
   }
 
@@ -419,4 +431,30 @@ resource "aws_route53_record" "www" {
     zone_id                = module.alb.lb_zone_id
     evaluate_target_health = true
   }
+}
+
+
+######################################################################################
+# SES
+######################################################################################
+module "ses_user" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-user"
+  version = "~> 5.27"
+
+  name          = "${var.name}-ses"
+  force_destroy = true
+}
+
+resource "aws_secretsmanager_secret" "ses_user" {
+  name = "${var.name}-ses-user"
+  tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "ses_user" {
+  secret_id = aws_secretsmanager_secret.ses_user.id
+
+  secret_string = jsonencode({
+    user     = module.ses_user.iam_access_key_id
+    password = module.ses_user.iam_access_key_secret
+  })
 }
