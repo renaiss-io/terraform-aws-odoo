@@ -37,3 +37,7 @@ terraform.rc
 # Local deploy of module files
 provider.tf
 .terraform.lock.hcl
+
+# Draw io tmp files
+*.xml.bkp
+*.xml.dtmp

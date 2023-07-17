@@ -5,6 +5,10 @@
 
 This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres database and ECS to run the containerized version of odoo server.
 
+## Architecture reference
+
+![Architecture diagram](images/Diagram.png)
+
 ## Requirements
 
 | Name | Version |
@@ -20,7 +24,6 @@ This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres d
 |------|--------|---------|
 | <a name="module_acm"></a> [acm](#module_acm) | terraform-aws-modules/acm/aws | ~> 4.0 |
 | <a name="module_alb"></a> [alb](#module_alb) | terraform-aws-modules/alb/aws | ~> 8.0 |
-| <a name="module_alb_sg"></a> [alb_sg](#module_alb_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
 | <a name="module_autoscaling"></a> [autoscaling](#module_autoscaling) | terraform-aws-modules/autoscaling/aws | ~> 6.5 |
 | <a name="module_autoscaling_sg"></a> [autoscaling_sg](#module_autoscaling_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
 | <a name="module_db"></a> [db](#module_db) | terraform-aws-modules/rds/aws | ~> 6.0 |
@@ -28,6 +31,7 @@ This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres d
 | <a name="module_ecs_cluster"></a> [ecs_cluster](#module_ecs_cluster) | terraform-aws-modules/ecs/aws | ~> 5.2 |
 | <a name="module_ecs_service"></a> [ecs_service](#module_ecs_service) | terraform-aws-modules/ecs/aws//modules/service | ~> 5.2 |
 | <a name="module_efs"></a> [efs](#module_efs) | terraform-aws-modules/efs/aws | ~> 1.2 |
+| <a name="module_ses_user"></a> [ses_user](#module_ses_user) | terraform-aws-modules/iam/aws//modules/iam-user | ~> 5.27 |
 | <a name="module_vpc"></a> [vpc](#module_vpc) | terraform-aws-modules/vpc/aws | ~> 5.0 |
 
 ## Usage
@@ -75,6 +79,7 @@ module "odoo" {
 | <a name="input_db_instance_type"></a> [db_instance_type](#input_db_instance_type) | Instance type for DB instances | `string` | `"db.t4g.small"` | no |
 | <a name="input_db_size"></a> [db_size](#input_db_size) | DB size (in GB) | `number` | `20` | no |
 | <a name="input_deploy_nat"></a> [deploy_nat](#input_deploy_nat) | Deploy NAT for private subnets | `bool` | `false` | no |
+| <a name="input_ecs_instance_type"></a> [ecs_instance_type](#input_ecs_instance_type) | Instance type for ECS instances | `string` | `"t3.micro"` | no |
 | <a name="input_name"></a> [name](#input_name) | A name to use in all resources | `string` | `"odoo"` | no |
 | <a name="input_odoo_domain"></a> [odoo_domain](#input_odoo_domain) | If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain | `string` | `null` | no |
 | <a name="input_odoo_version"></a> [odoo_version](#input_odoo_version) | Version of odoo docker image to use | `string` | `"16"` | no |
@@ -86,5 +91,5 @@ module "odoo" {
 
 | Name | Description |
 |------|-------------|
-| <a name="output_default_dns"></a> [default_dns](#output_default_dns) | DNS of the load balancer to access odoo |
+| <a name="output_dns"></a> [dns](#output_dns) | DNS of the load balancer to access odoo |
 <!-- END_TF_DOCS -->
