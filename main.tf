@@ -194,14 +194,24 @@ module "autoscaling" {
     AmazonSSMManagedInstanceCore        = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
 
-  user_data = base64encode(templatefile("${path.module}/ecs/ecs.sh", {
-    name = var.name
-    tags = jsonencode(var.tags)
+  user_data = base64encode(templatefile("${path.module}/ec2/ecs_node.sh", {
+    name        = module.ecs_cluster.cluster_name
+    tags        = jsonencode(var.tags)
+    conf_secret = aws_secretsmanager_secret.odoo_config.id
   }))
 
   autoscaling_group_tags = {
     AmazonECSManaged = true
   }
+}
+
+resource "aws_iam_role_policy" "get_conf_secret" {
+  name = "odoo-conf-file-access"
+  role = module.autoscaling.iam_role_name
+
+  policy = templatefile("${path.module}/iam/get_secret.json", {
+    secret_arn = aws_secretsmanager_secret.odoo_config.arn
+  })
 }
 
 module "autoscaling_sg" {
@@ -320,6 +330,10 @@ module "ecs_service" {
   volume = {
     tmp = {}
 
+    conf = {
+      host_path = "/etc/odoo"
+    }
+
     filestore = {
       efs_volume_configuration = {
         file_system_id     = module.efs.id
@@ -353,33 +367,25 @@ module "ecs_service" {
         { # Save files in EFS
           sourceVolume  = "filestore",
           containerPath = "/var/lib/odoo/filestore"
-        }
+        },
+        { # Save files in EFS
+          sourceVolume  = "conf",
+          containerPath = "/etc/odoo"
+        },
       ]
 
       environment = [
         { "name" : "DB_PORT_5432_TCP_ADDR", "value" : module.db.db_instance_address },
         { "name" : "DB_PORT_5432_TCP_PORT", "value" : module.db.db_instance_port },
         { "name" : "DB_ENV_POSTGRES_USER", "value" : module.db.db_instance_username },
-        { "name" : "SMTP_SERVER", "value" : "email-smtp.${data.aws_region.current.name}.amazonaws.com" },
-        { "name" : "SMTP_PORT", "value" : "587" },
       ]
 
       # RDS saves credentials in a json like { "username": "", "password": "" }
       # ECS allows to parse the secret pulled from AWS before setting the environment variable
-      secrets = [
-        {
-          "name" : "DB_ENV_POSTGRES_PASSWORD",
-          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
-        },
-        {
-          "name" : "SMTP_USER",
-          "valueFrom" : "${aws_secretsmanager_secret.ses_user.arn}:user::"
-        },
-        {
-          "name" : "SMTP_PASS",
-          "valueFrom" : "${aws_secretsmanager_secret.ses_user.arn}:password::"
-        }
-      ]
+      secrets = [{
+        "name" : "DB_ENV_POSTGRES_PASSWORD",
+        "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
+      }]
     }
   }
 
@@ -441,20 +447,36 @@ module "ses_user" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "~> 5.27"
 
-  name          = "${var.name}-ses"
-  force_destroy = true
+  name                          = "${var.name}-ses"
+  force_destroy                 = true
+  create_iam_user_login_profile = false
+  tags                          = var.tags
 }
 
-resource "aws_secretsmanager_secret" "ses_user" {
-  name = "${var.name}-ses-user"
-  tags = var.tags
+
+######################################################################################
+# ODOO
+######################################################################################
+resource "random_password" "odoo_admin_password" {
+  length  = 16
+  special = true
 }
 
-resource "aws_secretsmanager_secret_version" "ses_user" {
-  secret_id = aws_secretsmanager_secret.ses_user.id
+resource "aws_secretsmanager_secret" "odoo_config" {
+  name                    = "${var.name}-config"
+  description             = "Odoo conf file containing secrets"
+  recovery_window_in_days = 0
+  tags                    = var.tags
+}
 
-  secret_string = jsonencode({
-    user     = module.ses_user.iam_access_key_id
-    password = module.ses_user.iam_access_key_secret
+resource "aws_secretsmanager_secret_version" "odoo_config" {
+  secret_id = aws_secretsmanager_secret.odoo_config.id
+
+  secret_string = templatefile("${path.module}/odoo/odoo.conf", {
+    admin_passwd  = random_password.odoo_admin_password.result
+    smtp_server   = "email-smtp.${data.aws_region.current.name}.amazonaws.com"
+    smtp_port     = "587"
+    smtp_user     = module.ses_user.iam_access_key_id
+    smtp_password = module.ses_user.iam_access_key_secret
   })
 }
