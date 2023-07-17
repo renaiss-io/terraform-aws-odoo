@@ -11,7 +11,7 @@ resource "tls_private_key" "ca_key" {
 resource "tls_self_signed_cert" "ca_cert" {
   count = local.create_locally_signed_cert ? 1 : 0
 
-#   key_algorithm         = "RSA"
+  #   key_algorithm         = "RSA"
   private_key_pem       = tls_private_key.ca_key[0].private_key_pem
   is_ca_certificate     = true
   validity_period_hours = 87659 # Valid for 1 year
@@ -38,7 +38,7 @@ resource "tls_private_key" "alb_key" {
 resource "tls_cert_request" "alb_cert_req" {
   count = local.create_locally_signed_cert ? 1 : 0
 
-#   key_algorithm   = "RSA"
+  #   key_algorithm   = "RSA"
   private_key_pem = tls_private_key.alb_key[0].private_key_pem
 
   subject {
@@ -50,8 +50,8 @@ resource "tls_cert_request" "alb_cert_req" {
 resource "tls_locally_signed_cert" "alb_locally_signed_cert" {
   count = local.create_locally_signed_cert ? 1 : 0
 
-  cert_request_pem      = tls_cert_request.alb_cert_req[0].cert_request_pem
-#   ca_key_algorithm      = "RSA"
+  cert_request_pem = tls_cert_request.alb_cert_req[0].cert_request_pem
+  #   ca_key_algorithm      = "RSA"
   ca_private_key_pem    = tls_private_key.ca_key[0].private_key_pem
   ca_cert_pem           = tls_self_signed_cert.ca_cert[0].cert_pem
   validity_period_hours = 8760 # Valid for 1 year
