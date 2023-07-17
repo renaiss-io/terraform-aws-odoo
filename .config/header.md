@@ -6,4 +6,4 @@ This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres d
 
 ## Architecture reference
 
-![Architecture diagram](images/Diagram.png)
+![Architecture diagram](images/Diagram.svg)
