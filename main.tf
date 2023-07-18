@@ -330,9 +330,7 @@ module "ecs_service" {
   volume = {
     tmp = {}
 
-    conf = {
-      host_path = "/etc/odoo"
-    }
+    conf = { host_path = local.config_path }
 
     filestore = {
       efs_volume_configuration = {
@@ -366,11 +364,11 @@ module "ecs_service" {
         },
         { # Save files in EFS
           sourceVolume  = "filestore",
-          containerPath = "/var/lib/odoo/filestore"
+          containerPath = local.filestore_path
         },
         { # Save files in EFS
           sourceVolume  = "conf",
-          containerPath = "/etc/odoo"
+          containerPath = local.config_path
         },
       ]
 
@@ -409,7 +407,7 @@ data "aws_route53_zone" "domain" {
 }
 
 locals {
-  domain = var.route53_hosted_zone != null ? var.odoo_domain != null ? var.odoo_domain : data.aws_route53_zone.domain[0].name : null
+  domain = var.route53_hosted_zone != null ? var.odoo_domain != null ? var.odoo_domain : data.aws_route53_zone.domain[0].name : module.alb.lb_dns_name
 }
 
 module "acm" {
