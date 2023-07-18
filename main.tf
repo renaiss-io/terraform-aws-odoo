@@ -46,7 +46,7 @@ module "db" {
   major_engine_version           = "14"
   instance_class                 = var.db_instance_type
   allocated_storage              = var.db_size
-  username                       = var.name
+  username                       = "odoo"
   port                           = local.db_port
   db_subnet_group_name           = module.vpc.database_subnet_group
   vpc_security_group_ids         = [module.db_security_group.security_group_id]
@@ -90,6 +90,7 @@ module "db_security_group" {
     },
   ]
 }
+
 
 ######################################################################################
 # ALB
@@ -288,7 +289,7 @@ module "ecs_cluster" {
   default_capacity_provider_use_fargate = false
 
   autoscaling_capacity_providers = {
-    provider = {
+    (var.name) = {
       auto_scaling_group_arn         = module.autoscaling.autoscaling_group_arn
       managed_termination_protection = "ENABLED"
 
@@ -321,7 +322,7 @@ module "ecs_service" {
 
   capacity_provider_strategy = {
     provider = {
-      capacity_provider = module.ecs_cluster.autoscaling_capacity_providers["provider"].name
+      capacity_provider = module.ecs_cluster.autoscaling_capacity_providers[var.name].name
       weight            = 1
       base              = 1
     }
@@ -345,7 +346,7 @@ module "ecs_service" {
   }
 
   container_definitions = {
-    odoo = {
+    (var.name) = {
       image                    = "odoo:${var.odoo_version}"
       readonly_root_filesystem = false
 
@@ -451,6 +452,12 @@ module "ses_user" {
   tags                          = var.tags
 }
 
+resource "aws_iam_user_policy" "ses_user_send_email" {
+  name   = "AmazonSesSendingAccess"
+  user   = module.ses_user.iam_user_name
+  policy = file("${path.module}/iam/send_email.json")
+}
+
 
 ######################################################################################
 # ODOO
@@ -475,6 +482,6 @@ resource "aws_secretsmanager_secret_version" "odoo_config" {
     smtp_server   = "email-smtp.${data.aws_region.current.name}.amazonaws.com"
     smtp_port     = "587"
     smtp_user     = module.ses_user.iam_access_key_id
-    smtp_password = module.ses_user.iam_access_key_secret
+    smtp_password = module.ses_user.iam_access_key_ses_smtp_password_v4
   })
 }
