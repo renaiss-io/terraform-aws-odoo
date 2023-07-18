@@ -71,7 +71,7 @@ module "odoo_external_domain" {
 > specific version of the module. For a production deployment,
 > it is suggested that you point to a specific version tag like:
 >
-> **source = "git@github.com:renaiss-io/terraform-aws-odoo.git?ref=v1.0.0"**
+> **source = "git<span>@</span>github.com:renaiss-io/terraform-aws-odoo.git?ref=v1.0.0"**
 
 ## Inputs
 
