@@ -37,9 +37,7 @@ This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres d
 ## Usage
 
 ```hcl
-provider "aws" {
-  region = "us-east-1"
-}
+provider "aws" { region = "us-east-1" }
 
 # Simple usage
 module "odoo_simple" {
@@ -77,12 +75,16 @@ module "odoo_external_domain" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_odoo_root_email"></a> [odoo_root_email](#input_odoo_root_email) | Root email to use, must be validated in SES | `string` | n/a | yes |
 | <a name="input_acm_cert"></a> [acm_cert](#input_acm_cert) | ACM cert to assign to the load balancer, util when managing domain externally or to reuse a valid cert for a domain | `string` | `null` | no |
 | <a name="input_db_instance_type"></a> [db_instance_type](#input_db_instance_type) | Instance type for DB instances | `string` | `"db.t4g.small"` | no |
 | <a name="input_db_size"></a> [db_size](#input_db_size) | DB size (in GB) | `number` | `20` | no |
 | <a name="input_deploy_nat"></a> [deploy_nat](#input_deploy_nat) | Deploy NAT for private subnets | `bool` | `false` | no |
 | <a name="input_ecs_instance_type"></a> [ecs_instance_type](#input_ecs_instance_type) | Instance type for ECS instances | `string` | `"t3.micro"` | no |
+| <a name="input_ecs_task_memory"></a> [ecs_task_memory](#input_ecs_task_memory) | Memory to allocate for the task (in GB) | `number` | `500` | no |
 | <a name="input_name"></a> [name](#input_name) | A name to use in all resources | `string` | `"odoo"` | no |
+| <a name="input_odoo_db_name"></a> [odoo_db_name](#input_odoo_db_name) | Main odoo DB name | `string` | `"odoo"` | no |
+| <a name="input_odoo_docker_image"></a> [odoo_docker_image](#input_odoo_docker_image) | Odoo docker image to use | `string` | `"bitnami/odoo"` | no |
 | <a name="input_odoo_domain"></a> [odoo_domain](#input_odoo_domain) | If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain | `string` | `null` | no |
 | <a name="input_odoo_version"></a> [odoo_version](#input_odoo_version) | Version of odoo docker image to use | `string` | `"16"` | no |
 | <a name="input_route53_hosted_zone"></a> [route53_hosted_zone](#input_route53_hosted_zone) | If provided, the hosted zone is used as domain for odoo | `string` | `null` | no |

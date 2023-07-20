@@ -41,7 +41,7 @@ module "db" {
   create_db_parameter_group      = false
   engine                         = "postgres"
   family                         = "postgres14"
-  db_name                        = "postgres"
+  db_name                        = var.odoo_db_name
   engine_version                 = "14"
   major_engine_version           = "14"
   instance_class                 = var.db_instance_type
@@ -80,15 +80,13 @@ module "db_security_group" {
   vpc_id          = module.vpc.vpc_id
   tags            = var.tags
 
-  ingress_with_source_security_group_id = [
-    {
-      from_port                = local.db_port
-      to_port                  = local.db_port
-      protocol                 = "tcp"
-      description              = "EC2 ingress"
-      source_security_group_id = module.autoscaling_sg.security_group_id
-    },
-  ]
+  ingress_with_source_security_group_id = [{
+    from_port                = local.db_port
+    to_port                  = local.db_port
+    protocol                 = "tcp"
+    description              = "EC2 ingress"
+    source_security_group_id = module.autoscaling_sg.security_group_id
+  }]
 }
 
 
@@ -196,23 +194,13 @@ module "autoscaling" {
   }
 
   user_data = base64encode(templatefile("${path.module}/ec2/ecs_node.sh", {
-    name        = module.ecs_cluster.cluster_name
-    tags        = jsonencode(var.tags)
-    conf_secret = aws_secretsmanager_secret.odoo_config.id
+    name = module.ecs_cluster.cluster_name
+    tags = jsonencode(var.tags)
   }))
 
   autoscaling_group_tags = {
     AmazonECSManaged = true
   }
-}
-
-resource "aws_iam_role_policy" "get_conf_secret" {
-  name = "odoo-conf-file-access"
-  role = module.autoscaling.iam_role_name
-
-  policy = templatefile("${path.module}/iam/get_secret.json", {
-    secret_arn = aws_secretsmanager_secret.odoo_config.arn
-  })
 }
 
 module "autoscaling_sg" {
@@ -226,15 +214,13 @@ module "autoscaling_sg" {
   egress_rules    = ["all-all"]
   tags            = var.tags
 
-  ingress_with_source_security_group_id = [
-    {
-      from_port                = local.odoo_port
-      to_port                  = local.odoo_port
-      protocol                 = "tcp"
-      description              = "ALB ingress"
-      source_security_group_id = module.alb.security_group_id
-    }
-  ]
+  ingress_with_source_security_group_id = [{
+    from_port                = local.odoo_port
+    to_port                  = local.odoo_port
+    protocol                 = "tcp"
+    description              = "ALB ingress"
+    source_security_group_id = module.alb.security_group_id
+  }]
 }
 
 
@@ -315,7 +301,7 @@ module "ecs_service" {
   name                     = var.name
   cluster_arn              = module.ecs_cluster.cluster_arn
   subnet_ids               = module.vpc.private_subnets
-  memory                   = 800
+  memory                   = var.ecs_task_memory
   requires_compatibilities = ["EC2"]
   network_mode             = "host"
   tags                     = var.tags
@@ -331,8 +317,6 @@ module "ecs_service" {
   volume = {
     tmp = {}
 
-    conf = { host_path = local.config_path }
-
     filestore = {
       efs_volume_configuration = {
         file_system_id     = module.efs.id
@@ -347,44 +331,55 @@ module "ecs_service" {
 
   container_definitions = {
     (var.name) = {
-      image                    = "odoo:${var.odoo_version}"
+      image                    = "${var.odoo_docker_image}:${var.odoo_version}"
       readonly_root_filesystem = false
 
-      port_mappings = [
-        {
-          name          = var.name
-          containerPort = local.odoo_port
-          protocol      = "tcp"
-        }
-      ]
+      port_mappings = [{
+        name          = var.name
+        containerPort = local.odoo_port
+        protocol      = "tcp"
+      }]
 
       mount_points = [
         { # Local volume for tmp files
           sourceVolume  = "tmp",
-          containerPath = "/tmp"
+          containerPath = local.tmp_path
         },
         { # Save files in EFS
           sourceVolume  = "filestore",
           containerPath = local.filestore_path
         },
-        { # Save files in EFS
-          sourceVolume  = "conf",
-          containerPath = local.config_path
-        },
       ]
 
       environment = [
-        { "name" : "DB_PORT_5432_TCP_ADDR", "value" : module.db.db_instance_address },
-        { "name" : "DB_PORT_5432_TCP_PORT", "value" : module.db.db_instance_port },
-        { "name" : "DB_ENV_POSTGRES_USER", "value" : module.db.db_instance_username },
+        # Root user
+        { "name" : "ODOO_EMAIL", "value" : var.odoo_root_email },
+        # DB parameters
+        { "name" : "ODOO_DATABASE_HOST", "value" : module.db.db_instance_address },
+        { "name" : "ODOO_DATABASE_PORT_NUMBER", "value" : module.db.db_instance_port },
+        { "name" : "ODOO_DATABASE_USER", "value" : module.db.db_instance_username },
+        { "name" : "ODOO_DATABASE_NAME", "value" : var.odoo_db_name },
+        # SMTP parameters
+        { "name" : "ODOO_SMTP_HOST", "value" : "email-smtp.${data.aws_region.current.name}.amazonaws.com" },
+        { "name" : "ODOO_SMTP_PORT_NUMBER", "value" : "587" },
+        { "name" : "ODOO_SMTP_USER", "value" : module.ses_user.iam_access_key_id },
+        { "name" : "ODOO_SMTP_PROTOCOL", "value" : "ssl" },
       ]
 
-      # RDS saves credentials in a json like { "username": "", "password": "" }
-      # ECS allows to parse the secret pulled from AWS before setting the environment variable
-      secrets = [{
-        "name" : "DB_ENV_POSTGRES_PASSWORD",
-        "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
-      }]
+      secrets = [
+        {
+          "name" : "ODOO_DATABASE_PASSWORD",
+          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
+        },
+        {
+          "name" : "ODOO_SMTP_PASSWORD",
+          "valueFrom" : "${aws_secretsmanager_secret.odoo_ses_user.arn}:password::"
+        },
+        {
+          "name" : "ODOO_PASSWORD",
+          "valueFrom" : "${aws_secretsmanager_secret.odoo_root_user.arn}:password::"
+        },
+      ]
     }
   }
 
@@ -458,30 +453,43 @@ resource "aws_iam_user_policy" "ses_user_send_email" {
   policy = file("${path.module}/iam/send_email.json")
 }
 
-
-######################################################################################
-# ODOO
-######################################################################################
-resource "random_password" "odoo_admin_password" {
-  length  = 16
-  special = true
-}
-
-resource "aws_secretsmanager_secret" "odoo_config" {
-  name                    = "${var.name}-config"
-  description             = "Odoo conf file containing secrets"
+resource "aws_secretsmanager_secret" "odoo_ses_user" {
+  name                    = "${var.name}-ses-user"
+  description             = "Odoo SES user"
   recovery_window_in_days = 0
   tags                    = var.tags
 }
 
-resource "aws_secretsmanager_secret_version" "odoo_config" {
-  secret_id = aws_secretsmanager_secret.odoo_config.id
+resource "aws_secretsmanager_secret_version" "odoo_ses_user" {
+  secret_id = aws_secretsmanager_secret.odoo_ses_user.id
 
-  secret_string = templatefile("${path.module}/odoo/odoo.conf", {
-    admin_passwd  = random_password.odoo_admin_password.result
-    smtp_server   = "email-smtp.${data.aws_region.current.name}.amazonaws.com"
-    smtp_port     = "587"
-    smtp_user     = module.ses_user.iam_access_key_id
-    smtp_password = module.ses_user.iam_access_key_ses_smtp_password_v4
+  secret_string = jsonencode({
+    username = module.ses_user.iam_access_key_id
+    password = module.ses_user.iam_access_key_ses_smtp_password_v4
+  })
+}
+
+
+######################################################################################
+# ODOO
+######################################################################################
+resource "random_password" "odoo_root_password" {
+  length  = 16
+  special = true
+}
+
+resource "aws_secretsmanager_secret" "odoo_root_user" {
+  name                    = "${var.name}-root-user"
+  description             = "Odoo SES user"
+  recovery_window_in_days = 0
+  tags                    = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "odoo_root_user" {
+  secret_id = aws_secretsmanager_secret.odoo_root_user.id
+
+  secret_string = jsonencode({
+    username = var.odoo_root_email
+    password = random_password.odoo_root_password.result
   })
 }

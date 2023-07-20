@@ -52,6 +52,12 @@ variable "ecs_instance_type" {
   description = "Instance type for ECS instances"
 }
 
+variable "ecs_task_memory" {
+  default     = 400
+  type        = number
+  description = "Memory to allocate for the task (in GB)"
+}
+
 ######################################################################################
 # DOMAIN
 ######################################################################################
@@ -80,4 +86,21 @@ variable "odoo_version" {
   default     = "16"
   type        = string
   description = "Version of odoo docker image to use"
+}
+
+variable "odoo_docker_image" {
+  default     = "bitnami/odoo"
+  type        = string
+  description = "Odoo docker image to use"
+}
+
+variable "odoo_root_email" {
+  type        = string
+  description = "Root email to use, must be validated in SES"
+}
+
+variable "odoo_db_name" {
+  default     = "odoo"
+  type        = string
+  description = "Main odoo DB name"
 }
