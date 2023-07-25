@@ -158,7 +158,8 @@ module "alb" {
     target_type      = "instance"
 
     health_check = {
-      matcher = "200-399"
+      matcher = "200"
+      path    = "/web/health"
     }
   }]
 }
