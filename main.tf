@@ -3,9 +3,7 @@
 ######################################################################################
 data "aws_availability_zones" "available" {}
 
-locals {
-  azs = slice(data.aws_availability_zones.available.names, 0, 3)
-}
+locals { azs = slice(data.aws_availability_zones.available.names, 0, 3) }
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
@@ -93,6 +91,11 @@ module "db_security_group" {
 ######################################################################################
 # ALB
 ######################################################################################
+resource "random_password" "cloudfront_secret_for_alb" {
+  length  = 16
+  special = false
+}
+
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "~> 8.0"
@@ -134,22 +137,91 @@ module "alb" {
     }
   ]
 
-  http_tcp_listeners = [{
-    port        = 80
-    protocol    = "HTTP"
-    action_type = "redirect"
+  http_tcp_listeners = local.custom_domain ? [
+    {
+      port        = 80
+      protocol    = "HTTP"
+      action_type = "redirect"
+
+      redirect = {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+    ] : [
+    {
+      port        = 80
+      protocol    = "HTTP"
+      action_type = "redirect"
+
+      redirect = {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+        host        = module.cdn.cloudfront_distribution_domain_name
+      }
+    }
+  ]
+
+  http_tcp_listener_rules = local.custom_domain ? [] : [{
+    http_tcp_listener_index = 0
+    priority                = 10
+    tags                    = { Name = "IngressFromCloudFront" }
+
+    actions = [{
+      type               = "forward"
+      target_group_index = 0
+    }]
+
+    conditions = [
+      {
+        http_headers = [{
+          http_header_name = local.auth_header_alb
+          values           = [random_password.cloudfront_secret_for_alb.result]
+        }]
+      },
+      {
+        host_headers = [module.cdn.cloudfront_distribution_domain_name]
+      },
+    ]
+  }]
+
+  https_listeners = local.custom_domain ? [{
+    port            = 443
+    certificate_arn = module.acm[0].acm_certificate_arn
+    action_type     = "redirect"
 
     redirect = {
       port        = "443"
       protocol    = "HTTPS"
       status_code = "HTTP_301"
+      host        = local.cloudfront_custom_domain
     }
-  }]
+  }] : []
 
-  https_listeners = [{
-    port            = 443
-    certificate_arn = local.https_listener_cert
-  }]
+  https_listener_rules = local.custom_domain ? [{
+    https_listener_index = 0
+    priority             = 10
+    tags                 = { Name = "IngressFromCloudFront" }
+
+    actions = [{
+      type               = "forward"
+      target_group_index = 0
+    }]
+
+    conditions = [
+      {
+        http_headers = [{
+          http_header_name = local.auth_header_alb
+          values           = [random_password.cloudfront_secret_for_alb.result]
+        }]
+      },
+      {
+        host_headers = [local.cloudfront_custom_domain]
+      },
+    ]
+  }] : []
 
   target_groups = [{
     name             = var.name
@@ -162,6 +234,74 @@ module "alb" {
       path    = "/web/health"
     }
   }]
+}
+
+
+######################################################################################
+# CLOUDFRONT
+######################################################################################
+# Managed cache and origin policies to use in cdn
+data "aws_cloudfront_cache_policy" "CachingDisabled" { name = "Managed-CachingDisabled" }
+data "aws_cloudfront_cache_policy" "CachingOptimized" { name = "Managed-CachingOptimized" }
+data "aws_cloudfront_origin_request_policy" "AllViewer" { name = "Managed-AllViewer" }
+
+module "cdn" {
+  source  = "terraform-aws-modules/cloudfront/aws"
+  version = "~> 3.2"
+
+  aliases     = local.custom_domain ? [local.cloudfront_custom_domain] : []
+  comment     = "CDN for ${var.name}"
+  enabled     = true
+  price_class = var.cdn_price_class
+  tags        = var.tags
+
+  viewer_certificate = local.custom_domain ? {
+    acm_certificate_arn = local.region_use1 ? module.acm[0].acm_certificate_arn : var.acm_cert_use1
+    ssl_support_method  = "sni-only"
+    } : {
+    cloudfront_default_certificate = true
+    minimum_protocol_version       = "TLSv1"
+  }
+
+  origin = {
+    (var.name) = {
+      domain_name = local.custom_domain ? local.alb_custom_domain : module.alb.lb_dns_name
+
+      custom_origin_config = {
+        https_port             = 443
+        http_port              = 80
+        origin_protocol_policy = local.custom_domain ? "https-only" : "http-only"
+        origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+      }
+
+      custom_header = [{
+        name  = local.auth_header_alb
+        value = random_password.cloudfront_secret_for_alb.result
+      }]
+    }
+  }
+
+  default_cache_behavior = {
+    target_origin_id         = var.name
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cache_policy_id          = data.aws_cloudfront_cache_policy.CachingDisabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.AllViewer.id
+    use_forwarded_values     = false
+  }
+
+  ordered_cache_behavior = [
+    for path in local.cache_path_patterns : {
+      path_pattern             = path
+      target_origin_id         = var.name
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+      cached_methods           = ["GET", "HEAD"]
+      cache_policy_id          = data.aws_cloudfront_cache_policy.CachingOptimized.id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.AllViewer.id
+      use_forwarded_values     = false
+    }
+  ]
 }
 
 
@@ -355,6 +495,8 @@ module "ecs_service" {
       environment = [
         # Root user
         { "name" : "ODOO_EMAIL", "value" : var.odoo_root_email },
+        # Python path
+        { "name" : "PYTHONPATH", "value" : "/opt/python/site-packages" },
         # DB parameters
         { "name" : "ODOO_DATABASE_HOST", "value" : module.db.db_instance_address },
         { "name" : "ODOO_DATABASE_PORT_NUMBER", "value" : module.db.db_instance_port },
@@ -395,36 +537,33 @@ module "ecs_service" {
 
 
 ######################################################################################
-# DOMAIN
+# ROUTE 53
 ######################################################################################
 data "aws_route53_zone" "domain" {
-  count = var.route53_hosted_zone != null ? 1 : 0
+  count = local.custom_domain ? 1 : 0
 
   zone_id = var.route53_hosted_zone
 }
 
-locals {
-  domain = var.route53_hosted_zone != null ? var.odoo_domain != null ? var.odoo_domain : data.aws_route53_zone.domain[0].name : module.alb.lb_dns_name
-}
-
-module "acm" {
-  source  = "terraform-aws-modules/acm/aws"
-  version = "~> 4.0"
-
-  count = local.create_acm_cert ? 1 : 0
-
-  domain_name               = local.domain
-  zone_id                   = var.route53_hosted_zone
-  tags                      = var.tags
-  wait_for_validation       = true
-  subject_alternative_names = ["*.${local.domain}"]
-}
-
-resource "aws_route53_record" "www" {
-  count = var.route53_hosted_zone != null ? 1 : 0
+resource "aws_route53_record" "cdn" {
+  count = local.custom_domain ? 1 : 0
 
   zone_id = var.route53_hosted_zone
-  name    = local.domain
+  name    = local.cloudfront_custom_domain
+  type    = "A"
+
+  alias {
+    name                   = module.cdn.cloudfront_distribution_domain_name
+    zone_id                = module.cdn.cloudfront_distribution_hosted_zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "alb" {
+  count = local.custom_domain ? 1 : 0
+
+  zone_id = var.route53_hosted_zone
+  name    = local.alb_custom_domain
   type    = "A"
 
   alias {
@@ -434,6 +573,22 @@ resource "aws_route53_record" "www" {
   }
 }
 
+
+######################################################################################
+# ACM
+######################################################################################
+module "acm" {
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 4.0"
+
+  count = local.custom_domain ? 1 : 0
+
+  domain_name               = local.cloudfront_custom_domain
+  zone_id                   = var.route53_hosted_zone
+  tags                      = var.tags
+  wait_for_validation       = true
+  subject_alternative_names = ["*.${local.cloudfront_custom_domain}"]
+}
 
 ######################################################################################
 # SES
@@ -481,7 +636,7 @@ resource "random_password" "odoo_root_password" {
 
 resource "aws_secretsmanager_secret" "odoo_root_user" {
   name                    = "${var.name}-root-user"
-  description             = "Odoo SES user"
+  description             = "Odoo root user"
   recovery_window_in_days = 0
   tags                    = var.tags
 }

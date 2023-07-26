@@ -1,24 +1,29 @@
 locals {
+  # Services ports
   db_port   = 5432
   odoo_port = 8069
 
+  # Container paths
   filestore_path = "/bitnami/odoo"
   tmp_path       = "/opt/bitnami/odoo/tmp"
 
-  # If not external cert or domain, create locally signed cert
-  create_locally_signed_cert = var.acm_cert == null && var.route53_hosted_zone == null
-  # If not external cert and domain provided, create and validate acm cert
-  create_acm_cert = var.acm_cert == null && var.route53_hosted_zone != null
+  # Cached paths
+  cache_path_patterns = [
+    "*/static/*",
+    "/web/assets/*",
+    "/web/image/*",
+    "/web/css/*",
+    "/web/js/*",
+    "/web/content/*",
+    "/website/image/*",
+  ]
 
-  # Choose the cert from any of the 3 options:
-  # Self signed, created or externally provided
-  https_listener_cert = (
-    local.create_locally_signed_cert ?
-    aws_acm_certificate.self_signed[0].arn
-    :
-    local.create_acm_cert ?
-    module.acm[0].acm_certificate_arn
-    :
-    var.acm_cert
-  )
+  # CDN
+  region_use1     = data.aws_region.current.name == "us-east-1"
+  auth_header_alb = "CloudFront-Access"
+
+  # Domain variables
+  custom_domain            = var.route53_hosted_zone != null
+  cloudfront_custom_domain = local.custom_domain ? var.odoo_domain != null ? var.odoo_domain : data.aws_route53_zone.domain[0].name : null
+  alb_custom_domain        = local.custom_domain ? var.odoo_domain != null ? "alb.${var.odoo_domain}" : "alb.${data.aws_route53_zone.domain[0].name}" : null
 }

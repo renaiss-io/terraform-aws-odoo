@@ -73,10 +73,19 @@ variable "odoo_domain" {
   description = "If route53 is set, use this var to use a subdomain instead of the root domain. Must be subdomain of the provided domain"
 }
 
-variable "acm_cert" {
+######################################################################################
+# CDN
+######################################################################################
+variable "acm_cert_use1" {
   default     = null
   type        = string
-  description = "ACM cert to assign to the load balancer, util when managing domain externally or to reuse a valid cert for a domain"
+  description = "If using custom domain and deploying outside us-east-1, a cert in us-east-1 for the domain is required"
+}
+
+variable "cdn_price_class" {
+  default     = "PriceClass_100"
+  type        = string
+  description = "Price class for CDN"
 }
 
 ######################################################################################
@@ -103,4 +112,22 @@ variable "odoo_db_name" {
   default     = "odoo"
   type        = string
   description = "Main odoo DB name"
+}
+
+variable "odoo_custom_modules_paths" {
+  default     = []
+  type        = list(string)
+  description = "Paths containing custom modules to install"
+}
+
+variable "odoo_python_libraries_paths" {
+  default     = []
+  type        = list(string)
+  description = "Paths containing python libraries to install"
+}
+
+variable "extra_files_filter" {
+  default     = [".git"]
+  type        = list(string)
+  description = "Paths containing python libraries to install"
 }
