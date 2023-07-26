@@ -51,7 +51,7 @@ module "vpc" {
 ######################################################################################
 module "db" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
+  version = "~> 6.1"
 
   identifier                     = var.name
   instance_use_identifier_prefix = false
@@ -72,20 +72,6 @@ module "db" {
   backup_window                  = "03:00-06:00"
   backup_retention_period        = 0
   tags                           = var.tags
-}
-
-# Query secret created by RDS cause the official RDS module does not expose it
-# https://github.com/terraform-aws-modules/terraform-aws-rds/issues/501
-data "aws_secretsmanager_secrets" "db_master_password" {
-  filter {
-    name   = "owning-service"
-    values = ["rds"]
-  }
-
-  filter {
-    name   = "tag-value"
-    values = [module.db.db_instance_arn]
-  }
 }
 
 module "db_security_group" {
@@ -611,7 +597,7 @@ module "ecs_service" {
       secrets = [
         {
           "name" : "ODOO_DATABASE_PASSWORD",
-          "valueFrom" : "${tolist(data.aws_secretsmanager_secrets.db_master_password.arns)[0]}:password::"
+          "valueFrom" : "${module.db.db_instance_master_user_secret_arn}:password::"
         },
         {
           "name" : "ODOO_SMTP_PASSWORD",
