@@ -1,5 +1,13 @@
 ######################################################################################
 # VPC
+#
+# Official terraform module is used for the basic network layer. A VPC with public,
+# private and database networks created in the main 2 availability zones is created.
+#
+# By default (to keep all resources inside the free tier), no NAT gateways are used
+# therefore using public subnets for ECS nodes (for internet access, security managed
+# at security group level). DB subnets have no internet access.
+#
 ######################################################################################
 data "aws_availability_zones" "available" {}
 
@@ -28,6 +36,18 @@ module "vpc" {
 
 ######################################################################################
 # DB
+#
+# An RDS database based in Postgres engine (v14) is used as Odoo requires this engine:
+# https://www.odoo.com/documentation/16.0/administration/install/install.html#postgresql
+#
+# AWS allows the master password to be fully managed and rotated, but the official
+# terraform module for RDS does not support the 'secrets' output of the RDS database,
+# so this code queries the managed AWS Secret after RDS is created. The secret is used
+# to set the master password as an environment variable in the Odoo ECS task.
+#
+# The security group of the DB only allows traffic in the DB port from the EC2
+# security group used by the ECS nodes.
+#
 ######################################################################################
 module "db" {
   source  = "terraform-aws-modules/rds/aws"
@@ -90,6 +110,26 @@ module "db_security_group" {
 
 ######################################################################################
 # ALB
+#
+# Balances the traffic to the ECS containers hosted in EC2.
+#
+# It can only be accessed through the CDN, direct access to its public domain gets
+# redirected to the CDN domain, and a custom secret header along with a host check
+# is used to filter traffic.
+#
+# By default, it uses HTTP over port 80 (due to the restriction of creating valid SSL
+# certs for the default *.amazonaws.com domain), but if a custom domain is set with
+# 'var.route53_hosted_zone' an ACM cert is created and the listeners are configured
+# as HTTPs in port 443 (80 redirects to this one).
+#
+# If a custom domain and HTTPs is not set, the traffic between the CDN and the ALB
+# could be intercepted and the 'secret' header set by the CDN discovered. The ALB
+# requires the host to be the custom domain anyways, which is what we need at an app
+# layer, so this does not represent a threat (though it is preferred encrypt traffic).
+#
+# The traffic behind the load balancer is over HTTP in port 80, SSL is managed at
+# ALB/CDN layer.
+#
 ######################################################################################
 resource "random_password" "cloudfront_secret_for_alb" {
   length  = 16
@@ -239,8 +279,24 @@ module "alb" {
 
 ######################################################################################
 # CLOUDFRONT
+#
+# Access point for all Odoo services.
+#
+# It redirects all queries to the ALB and caches some of them according to
+# recommended CDN configuration:
+# https://www.odoo.com/documentation/16.0/administration/install/cdn.html#configure-the-odoo-instance-with-the-new-zone
+#
+# If a custom domain is set with route 53, an alias and a ACM cert is used instead
+# of the default ones.
+#
+# If the region used is not us-east-1 and a custom domain is used, an externally
+# managed ACM cert for the custom domain must be created and provided
+# with the 'var.acm_cert_use1' variable:
+# https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html#https-requirements-certificate-issuer
+#
+# For caching and origin request policies, AWS managed policies are queried and used.
+#
 ######################################################################################
-# Managed cache and origin policies to use in cdn
 data "aws_cloudfront_cache_policy" "CachingDisabled" { name = "Managed-CachingDisabled" }
 data "aws_cloudfront_cache_policy" "CachingOptimized" { name = "Managed-CachingOptimized" }
 data "aws_cloudfront_origin_request_policy" "AllViewer" { name = "Managed-AllViewer" }
@@ -307,6 +363,18 @@ module "cdn" {
 
 ######################################################################################
 # EC2
+#
+# The official autoscaling module of terraform is used to create a scalable group of
+# EC2 instances to act as ECS nodes. The base image used is the official alinux2
+# provided by AWS (and exposed in a global SSM parameter publicly accessible:
+# /aws/service/ecs/optimized-ami/amazon-linux-2/recommended). User data is used to
+# configure the ECS agent.
+#
+# The security group only allows access to the ALB in the odoo port and full
+# outbound traffic.
+#
+# To keep infrastructure in the free tier, t3.micro instances are used by default.
+#
 ######################################################################################
 module "autoscaling" {
   source  = "terraform-aws-modules/autoscaling/aws"
@@ -367,6 +435,14 @@ module "autoscaling_sg" {
 
 ######################################################################################
 # EFS
+#
+# Odoo requires a filesystem to store attachments. AWS EFS is used for that. It is
+# created and made available in the network where the ECS nodes run. Access points
+# are used to simplify the permissions used by ECS containers to use it.
+#
+# Access is only granted in the NFS port to the ECS nodes with a security group
+# rule pointing to ECS nodes security group.
+#
 ######################################################################################
 module "efs" {
   source  = "terraform-aws-modules/efs/aws"
@@ -406,6 +482,29 @@ module "efs" {
 
 ######################################################################################
 # ECS
+#
+# ECS is the containers manager used to run Odoo as docker containers in a self
+# managed cluster in EC2. The official terraform module of ECS is used for both
+# the cluster infrastructure as we as the ECS service definition and creation.
+#
+# The base docker image used for the service is bitnami/odoo in the version 16. This
+# image was chosen cause of its versatility to setup the base odoo configuration from
+# environment variables (the entrypoint of the image creates an odoo config file
+# automatically when provisioned based on environment variables):
+# https://hub.docker.com/r/bitnami/odoo
+#
+# ECS task is run in host mode since each node is only meant to run one instance of
+# the odoo container that require internet access, and given the default configuration
+# does not use NAT gateways, host mode let containers used the main ENI to access
+# internet and set access rules with the main security group:
+# https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-outbound.html#networking-public-subnet
+#
+# ECS task is configured with RDS credentials (read from the AWS managed secret),
+# root user credentials (user is taken from 'var.odoo_root_email', password is
+# automatically generated, stored in secrets and set as secret in the task), and
+# SMTP configuration (an IAM user with SMTP permissions is created and its credentials
+# are stored in secrets).
+#
 ######################################################################################
 module "ecs_cluster" {
   source  = "terraform-aws-modules/ecs/aws"
@@ -538,6 +637,15 @@ module "ecs_service" {
 
 ######################################################################################
 # ROUTE 53
+#
+# If a custom domain is set with the 'var.route53_hosted_zone', records are created
+# as aliases for the CDN and the ALB.
+#
+# By default, the root domain of the hosted zone is used for the CDN and a subdomain
+# of it in 'alb.' for the ALB. A subdomain can be optionally set with the
+# 'var.odoo_domain' variable, setting the CDN domain in 'subdomain.' and the ALB domain
+# in 'alb.subdomain.'.
+#
 ######################################################################################
 data "aws_route53_zone" "domain" {
   count = local.custom_domain ? 1 : 0
@@ -576,6 +684,13 @@ resource "aws_route53_record" "alb" {
 
 ######################################################################################
 # ACM
+#
+# When a custom domain is set, an ACM cert for the domain and '*.' subdomain is
+# created and automatically validated.
+#
+# The cert is used for the ALB listeners and conditionally for the CDN (if the region
+# is us-east-1, if not a separate cert hosted in us-east-1 must be provided).
+#
 ######################################################################################
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
@@ -592,6 +707,15 @@ module "acm" {
 
 ######################################################################################
 # SES
+#
+# AWS SES is used as mail gateway. An IAM user is created with permissions to send
+# emails through SES. A key pair is created, stored in AWS Secrets Manager and exposed
+# to the odoo server process via ECS secret environment variables.
+#
+# In order for Odoo to send emails, any origin must be verified in SES (specific email
+# addresses or email domains can be verified) and the AWS account must be taken off
+# the sandbox mode via a support request (to be able to send to any destination).
+#
 ######################################################################################
 module "ses_user" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
@@ -627,7 +751,13 @@ resource "aws_secretsmanager_secret_version" "odoo_ses_user" {
 
 
 ######################################################################################
-# ODOO
+# ODOO ROOT USER
+#
+# Root user of odoo is initialized with 'var.odoo_root_email' as the root user and
+# a randomly generated password. The password is stored in AWS Secrets Manager,
+# exposed to the odoo server via ECS task environment variable and set as root user
+# by the bitnami/odoo image entrypoint script.
+#
 ######################################################################################
 resource "random_password" "odoo_root_password" {
   length  = 16
