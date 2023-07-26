@@ -1,8 +1,13 @@
 # Odoo in AWS
 
-## Description
+This module deploys [odoo](https://odoo.com) in AWS using:
 
-This module deploys [odoo](https://odoo.com) in AWS using RDS for the postgres database; ECS backed with EC2 to run the containerized version of odoo server and SES as a mail server.
+- ECS backed with EC2 to run the containerized version of odoo server
+- RDS for the postgres database
+- EFS as a filesystem for odoo's filestore
+- SES as a mail gateway
+- CloudFront as a CDN with cache capabilities
+- AWS Secrets to store credentials
 
 ## Architecture reference
 
