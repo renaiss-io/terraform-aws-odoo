@@ -38,7 +38,7 @@ variable "db_size" {
 }
 
 variable "db_instance_type" {
-  default     = "db.t4g.small"
+  default     = "db.t4g.micro"
   type        = string
   description = "Instance type for DB instances"
 }
