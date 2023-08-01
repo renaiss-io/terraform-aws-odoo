@@ -1,0 +1,9 @@
+{
+  "source": ["aws.ecr"],
+  "detail-type": ["ECR Image Action"],
+  "detail": {
+    "action-type": ["PUSH"],
+    "repository-name": ["${repository}"],
+    "image-tag": ["${tag}"]
+  }
+}

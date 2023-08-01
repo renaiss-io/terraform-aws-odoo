@@ -4,8 +4,19 @@ locals {
   odoo_port = 8069
 
   # Container paths
-  filestore_path = "/bitnami/odoo"
-  tmp_path       = "/opt/bitnami/odoo/tmp"
+  filestore_path        = "/bitnami/odoo"
+  addons_dir            = "/bitnami/odoo/addons"
+  python_extra_packages = "/bitnami/odoo/python_extra_packages"
+  tmp_path              = "/opt/bitnami/odoo/tmp"
+
+  # S3
+  requirements_file_object = "requirements.txt"
+
+  # ECR
+  custom_image = var.python_requirements_file != null
+
+  # Events
+  cron_expression = "cron(0 0 * * ? *)"
 
   # Cached paths
   cache_path_patterns = [

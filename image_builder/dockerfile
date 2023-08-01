@@ -1,0 +1,3 @@
+FROM {{{ imagebuilder:parentImage }}}
+{{{ imagebuilder:environments }}}
+{{{ imagebuilder:components }}}

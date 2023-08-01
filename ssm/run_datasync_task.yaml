@@ -1,0 +1,34 @@
+---
+description: Run DataSync Task
+schemaVersion: "0.3"
+
+parameters:
+  TaskArn:
+    type: String
+    description: "Task to run"
+
+mainSteps:
+  - name: runTask
+    action: aws:executeAwsApi
+    onFailure: Abort
+    inputs:
+      Service: datasync
+      Api: StartTaskExecution
+      TaskArn: "{{ TaskArn }}"
+    outputs:
+      - Name: taskExecutionArn
+        Selector: "$.TaskExecutionArn"
+        Type: String
+    nextStep: verifyTaskRun
+
+  - name: verifyTaskRun
+    action: aws:waitForAwsResourceProperty
+    timeoutSeconds: 3600
+    inputs:
+      Service: datasync
+      Api: DescribeTaskExecution
+      TaskExecutionArn: "{{ runTask.taskExecutionArn }}"
+      PropertySelector: "$.Status"
+      DesiredValues:
+        - SUCCESS
+    isEnd: true

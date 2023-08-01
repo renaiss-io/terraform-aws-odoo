@@ -138,14 +138,29 @@ variable "odoo_custom_modules_paths" {
   description = "Paths containing custom modules to install"
 }
 
-variable "odoo_python_libraries_paths" {
+variable "odoo_python_dependencies_paths" {
   default     = []
   type        = list(string)
-  description = "Paths containing python libraries to install"
+  description = "Paths containing python dependencies"
 }
 
 variable "extra_files_filter" {
   default     = [".git"]
   type        = list(string)
-  description = "Paths containing python libraries to install"
+  description = "Paths to ignore when processing modules and python dependencies"
+}
+
+variable "python_requirements_file" {
+  default     = null
+  type        = string
+  description = "Path to a requirements.txt file with extra libraries to install in python environment"
+}
+
+######################################################################################
+# DATASYNC
+######################################################################################
+variable "datasync_preserve_deleted_files" {
+  default     = false
+  type        = bool
+  description = "Datasync preserves old files not present in S3"
 }
