@@ -504,6 +504,11 @@ module "ecs_cluster" {
   tags                                  = var.tags
   default_capacity_provider_use_fargate = false
 
+  cluster_settings = {
+    name  = "containerInsights"
+    value = var.ecs_container_insights ? "enabled" : "disabled"
+  }
+
   autoscaling_capacity_providers = {
     (var.name) = {
       auto_scaling_group_arn         = module.autoscaling.autoscaling_group_arn

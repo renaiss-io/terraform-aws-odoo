@@ -70,6 +70,12 @@ variable "ecs_task_memory" {
   description = "Memory to allocate for the task (in GB)"
 }
 
+variable "ecs_container_insights" {
+  default     = false
+  type        = bool
+  description = "Enable container ingsights in ECS (not inside free tier)"
+}
+
 ######################################################################################
 # DOMAIN
 ######################################################################################
