@@ -37,6 +37,18 @@ variable "db_size" {
   description = "DB size (in GB)"
 }
 
+variable "db_max_size" {
+  default     = 100
+  type        = number
+  description = "Max size of DB (var.db_size will be allocated and autoscale will be enabled)"
+}
+
+variable "db_root_username" {
+  default     = "odoo"
+  type        = string
+  description = "DB root username"
+}
+
 variable "db_instance_type" {
   default     = "db.t4g.micro"
   type        = string

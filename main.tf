@@ -40,9 +40,7 @@ module "vpc" {
 # An RDS database based in Postgres engine (v14) is used as Odoo requires this engine:
 # https://www.odoo.com/documentation/16.0/administration/install/install.html#postgresql
 #
-# AWS allows the master password to be fully managed and rotated, but the official
-# terraform module for RDS does not support the 'secrets' output of the RDS database,
-# so this code queries the managed AWS Secret after RDS is created. The secret is used
+# AWS allows the master password to be fully managed and rotated. The secret is used
 # to set the master password as an environment variable in the Odoo ECS task.
 #
 # The security group of the DB only allows traffic in the DB port from the EC2
@@ -53,25 +51,30 @@ module "db" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 6.1"
 
-  identifier                     = var.name
+  identifier = var.name
+  db_name    = var.odoo_db_name
+  username   = var.db_root_username
+  tags       = var.tags
+
   instance_use_identifier_prefix = false
   create_db_option_group         = false
   create_db_parameter_group      = false
-  engine                         = "postgres"
-  family                         = "postgres14"
-  db_name                        = var.odoo_db_name
-  engine_version                 = "14"
-  major_engine_version           = "14"
-  instance_class                 = var.db_instance_type
-  allocated_storage              = var.db_size
-  username                       = "odoo"
-  port                           = local.db_port
-  db_subnet_group_name           = module.vpc.database_subnet_group
-  vpc_security_group_ids         = [module.db_security_group.security_group_id]
-  maintenance_window             = "Mon:00:00-Mon:03:00"
-  backup_window                  = "03:00-06:00"
-  backup_retention_period        = 0
-  tags                           = var.tags
+
+  engine         = "postgres"
+  engine_version = "14"
+
+  instance_class        = var.db_instance_type
+  allocated_storage     = var.db_size
+  max_allocated_storage = var.db_max_size
+
+  port                   = local.db_port
+  db_subnet_group_name   = module.vpc.database_subnet_group
+  vpc_security_group_ids = [module.db_security_group.security_group_id]
+
+  skip_final_snapshot     = true
+  backup_window           = "03:00-06:00"
+  backup_retention_period = 1
+  copy_tags_to_snapshot   = true
 }
 
 module "db_security_group" {
