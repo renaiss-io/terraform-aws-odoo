@@ -116,7 +116,7 @@ module "db_security_group" {
 # requires the host to be the custom domain anyways, which is what we need at an app
 # layer, so this does not represent a threat (though it is preferred encrypt traffic).
 #
-# The traffic behind the load balancer is over HTTP in port 80, SSL is managed at
+# The traffic behind the load balancer is over HTTP in port 8069, SSL is managed at
 # ALB/CDN layer.
 #
 ######################################################################################
