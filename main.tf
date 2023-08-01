@@ -378,8 +378,9 @@ module "autoscaling" {
   tags                            = var.tags
 
   create_iam_instance_profile = true
-  iam_role_name               = "${var.name}-ecs"
-  iam_role_description        = "ECS role for ${var.name}"
+  iam_role_name               = "${var.name}-ec2"
+  iam_role_use_name_prefix    = false
+  iam_role_description        = "IAM role for ${var.name} EC2 instances"
   vpc_zone_identifier         = module.vpc.public_subnets
   health_check_type           = "EC2"
   min_size                    = 1
