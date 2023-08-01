@@ -533,13 +533,32 @@ module "ecs_service" {
   source  = "terraform-aws-modules/ecs/aws//modules/service"
   version = "~> 5.2"
 
-  name                     = var.name
-  cluster_arn              = module.ecs_cluster.cluster_arn
-  subnet_ids               = module.vpc.private_subnets
-  memory                   = var.ecs_task_memory
-  requires_compatibilities = ["EC2"]
-  network_mode             = "host"
-  tags                     = var.tags
+  name                               = var.name
+  cluster_arn                        = module.ecs_cluster.cluster_arn
+  subnet_ids                         = module.vpc.private_subnets
+  memory                             = var.ecs_task_memory
+  launch_type                        = "EC2"
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+  force_new_deployment               = false
+  requires_compatibilities           = ["EC2"]
+  network_mode                       = "host"
+  tags                               = var.tags
+
+  iam_role_name                      = "${var.name}-ecs-cluster"
+  iam_role_use_name_prefix           = false
+  iam_role_description               = "IAM role for ${var.name} ECS cluster"
+  task_exec_iam_role_name            = "${var.name}-ecs-task-execution"
+  task_exec_iam_role_use_name_prefix = false
+  task_exec_iam_role_description     = "IAM role for ${var.name} ECS execution"
+  task_exec_ssm_param_arns           = []
+  create_tasks_iam_role              = false
+
+  task_exec_secret_arns = [
+    module.db.db_instance_master_user_secret_arn,
+    aws_secretsmanager_secret.odoo_ses_user.arn,
+    aws_secretsmanager_secret.odoo_root_user.arn,
+  ]
 
   capacity_provider_strategy = {
     provider = {
