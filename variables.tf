@@ -132,6 +132,9 @@ variable "odoo_db_name" {
   description = "Main odoo DB name"
 }
 
+######################################################################################
+# CUSTOM MODULES
+######################################################################################
 variable "odoo_custom_modules_paths" {
   default     = []
   type        = list(string)

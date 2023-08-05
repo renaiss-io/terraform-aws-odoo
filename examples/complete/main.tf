@@ -24,4 +24,11 @@ module "odoo_complete" {
   ecs_instance_type      = "t3.large"
   ecs_task_memory        = 1024
   ecs_container_insights = true
+
+  # custom modules
+  python_requirements_file  = "./requirements.txt"
+  odoo_custom_modules_paths = ["./custom_modules"]
+
+  # datasync
+  datasync_preserve_deleted_files = false
 }
