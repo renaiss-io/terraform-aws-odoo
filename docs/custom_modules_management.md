@@ -8,10 +8,10 @@ When using custom modules, the python environment running odoo server might need
 
 When a `requirements.txt` file is provided through the `python_requirements_file` variable, some resources are created to be able to create and use a new docker image based on the bitnami one:
 
-- An **AWS ImageBuilder** pipeline with instructions to build a new docker image
-- An **AWS ECR** repository to store the new image
-- A **S3** bucket to store the new requirements file
-- **EventBridge** and **SSM Automations** to trigger the build
+- [An **AWS ImageBuilder** pipeline with instructions to build a new docker image](../custom_modules.tf#L195-L348)
+- [An **AWS ECR** repository to store the new image](../custom_modules.tf#L206-L217)
+- [A **S3** bucket to store the new requirements file](../custom_modules.tf#L14-L21)
+- [**EventBridge** and **SSM Automations** to trigger the build](../custom_modules.tf#L411-L430)
 
 ### Process reference:
 
@@ -40,9 +40,9 @@ In addition, if python packages must be provided with the compiled source code (
 
 In these two cases, some extra resources are created to install these files:
 
-- A **S3** bucket to store files
-- **AWS DataSync** locations and tasks to sync s3 objects to EFS
-- **EventBridge** and **SSM automation** resources to use as triggers of the sync tasks
+- [A **S3** bucket to store files](../custom_modules.tf#L14-L21)
+- [**AWS DataSync** locations and tasks to sync s3 objects to EFS](../custom_modules.tf#L112-L192)
+- [**EventBridge** and **SSM automation** resources to use as triggers of the sync tasks](../custom_modules.tf#L432-L472)
 
 ### Process reference:
 
