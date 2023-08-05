@@ -23,6 +23,8 @@ When a `requirements.txt` file is provided through the `python_requirements_file
 
 3. Once the new image is pushed to ECR, a new notification is sent and handled by EventBridge rules, but this time this executes an automation to replace the current task running in ECS to update the base image used by odoo servers (this is accomplished by forcing a new deployment of the ECS service).
 
+> The ImageBuilder pipeline is also configured to run periodically if changes are detected in the source image. Step 3 is also triggered in this case.
+
 ## Custom modules
 
 To install custom modules, we need to store the source code of the modules in a place accessible by the odoo server processes. To do this, the variable `odoo_custom_modules_paths` allows to send a list of directories where the custom modules' source code is.
