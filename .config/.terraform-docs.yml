@@ -24,7 +24,12 @@ content: |-
   ## Usage
 
   ```hcl
-  {{ include ".config/example.tf" }}
+  {{ include ".config/usage.tf" }}
+  ```
+
+  **Usage outside us-east-1**
+  ```hcl
+  {{ include ".config/usage_different_region.tf" }}
   ```
 
   > Important! For simplicity, the examples do not point to a

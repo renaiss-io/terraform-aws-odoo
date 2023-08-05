@@ -3,16 +3,25 @@
 
 This module deploys [odoo](https://odoo.com) in AWS using:
 
-- ECS backed with EC2 to run the containerized version of odoo server
-- RDS for the postgres database
-- EFS as a filesystem for odoo's filestore
-- SES as a mail gateway
-- CloudFront as a CDN with cache capabilities
-- AWS Secrets to store credentials
+- **ECS** backed with EC2 to run the containerized version of odoo server
+- **RDS** for the postgres database
+- **EFS** as a filesystem for odoo's filestore
+- **SES** as a mail gateway
+- **CloudFront** as a CDN with cache capabilities
+- **Secrets Manager** to store credentials
+
+To [manage custom modules](docs/custom_modules_management.md):
+
+- **S3** to store custom modules files
+- **EventBridge** to manage event driven actions
+- **DataSync** to sync S3 custom module files to EFS
+- **ECR** to store a custom docker image in case of extra python dependencies
+- **ImageBuilder** to define a build pipeline for a custom docker image
+- **SSM automations** to execute DataSync tasks and ImageBuilder pipelines
 
 ## Architecture reference
 
-![Architecture diagram](images/Diagram.svg)
+![Architecture diagram](images/Main.svg)
 
 ## Requirements
 
@@ -52,6 +61,9 @@ provider "aws" { region = "us-east-1" }
 # Simple usage
 module "odoo_simple" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
+
+  name = "odoo"
+  tags = { "Environment" : "prod" }
 }
 
 # You can use a domain hosted in route 53 for odoo
@@ -62,6 +74,40 @@ module "odoo_custom_domain" {
 
   route53_hosted_zone = "Z01208793QY6JAD0UY432"
   odoo_domain         = "odoo.example.com"
+}
+```
+
+**Usage outside us-east-1**
+```hcl
+provider "aws" { region = "us-east-2" }
+
+provider "aws" {
+  region = "us-east-1"
+  alias  = "use1"
+}
+
+# When deploying outside us-east-1 and using a custom domain
+# an ACM cert is required in us-east-1 for the cdn.
+# The cert must be created externally and sent to the module
+# in the var.acm_cert_use1 variable
+module "odoo_simple" {
+  source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
+
+  route53_hosted_zone = "Z01208793QY6JAD0UY432"
+  odoo_domain         = "odoo.example.com"
+  acm_cert_use1       = module.acm.acm_certificate_arn
+}
+
+module "acm" {
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 4.0"
+
+  provider = { aws = aws.use1 }
+
+  domain_name               = "example.com"
+  zone_id                   = "Z01208793QY6JAD0UY432"
+  wait_for_validation       = true
+  subject_alternative_names = ["*.example.com"]
 }
 ```
 

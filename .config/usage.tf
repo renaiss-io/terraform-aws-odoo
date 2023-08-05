@@ -3,6 +3,9 @@ provider "aws" { region = "us-east-1" }
 # Simple usage
 module "odoo_simple" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
+
+  name = "odoo"
+  tags = { "Environment" : "prod" }
 }
 
 # You can use a domain hosted in route 53 for odoo
