@@ -1,6 +1,7 @@
 formatter: "markdown"
 
 header-from: ".config/header.md"
+footer-from: ".config/footer.md"
 
 output:
   file: "README.md"
@@ -32,6 +33,11 @@ content: |-
   {{ include ".config/usage_different_region.tf" }}
   ```
 
+  **Usage with custom modules**
+  ```hcl
+  {{ include ".config/usage_custom_modules.tf" }}
+  ```
+
   > Important! For simplicity, the examples do not point to a
   > specific version of the module. For a production deployment,
   > it is suggested that you point to a specific version tag like:
@@ -41,3 +47,5 @@ content: |-
   {{ .Inputs }}
 
   {{ .Outputs }}
+
+  {{ .Footer }}

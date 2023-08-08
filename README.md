@@ -56,8 +56,6 @@ To [manage custom modules](docs/custom_modules_management.md):
 ## Usage
 
 ```hcl
-provider "aws" { region = "us-east-1" }
-
 # Simple usage
 module "odoo_simple" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
@@ -98,6 +96,8 @@ module "odoo_simple" {
   acm_cert_use1       = module.acm.acm_certificate_arn
 }
 
+# This represents the ACM cert in us-east-1 created outside
+# the odoo module
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 4.0"
@@ -108,6 +108,23 @@ module "acm" {
   zone_id                   = "Z01208793QY6JAD0UY432"
   wait_for_validation       = true
   subject_alternative_names = ["*.example.com"]
+}
+```
+
+**Usage with custom modules**
+```hcl
+module "odoo_complete" {
+  source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
+
+  # Custom modules files
+  # If this var is provided, the files are stored in s3
+  # and synced to EFS with DataSync
+  odoo_custom_modules_paths = ["./custom_modules"]
+
+  # Custom python packages
+  # If this var is provided, a custom docker image is
+  # created and maintained in ECR
+  python_requirements_file = "./requirements.txt"
 }
 ```
 
@@ -151,4 +168,12 @@ module "acm" {
 | Name | Description |
 |------|-------------|
 | <a name="output_dns"></a> [dns](#output_dns) | DNS to access odoo |
+
+## Supporting documentation
+
+- [Custom modules management](./docs/custom_modules_management.md)
+
+- [SES configuration](./docs/ses_as_mail_gateway)
+
+- [Costs of running Odoo in AWS](./docs/costs.md)
 <!-- END_TF_DOCS -->

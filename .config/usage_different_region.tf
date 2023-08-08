@@ -17,6 +17,8 @@ module "odoo_simple" {
   acm_cert_use1       = module.acm.acm_certificate_arn
 }
 
+# This represents the ACM cert in us-east-1 created outside
+# the odoo module
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 4.0"
