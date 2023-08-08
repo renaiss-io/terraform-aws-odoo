@@ -239,6 +239,8 @@ module "image_builder_role" {
 }
 
 resource "aws_iam_role_policy" "image_builder_role_modules_bucket_access" {
+  count = local.custom_image ? 1 : 0
+
   name = "${var.name}-modules-bucket-access"
   role = module.image_builder_role[0].iam_role_name
 
