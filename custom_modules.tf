@@ -136,7 +136,7 @@ module "datasync_role" {
   role_name               = "${var.name}-datasync"
   role_description        = "IAM role for ${var.name} data sync"
   create_role             = true
-  create_instance_profile = true
+  create_instance_profile = false
   role_requires_mfa       = false
   trusted_role_services   = ["datasync.amazonaws.com"]
   trusted_role_actions    = ["sts:AssumeRole"]
@@ -370,7 +370,7 @@ module "eventbridge_role" {
   role_name               = "${var.name}-eventbridge"
   role_description        = "IAM role for ${var.name} eventbridge"
   create_role             = true
-  create_instance_profile = true
+  create_instance_profile = false
   role_requires_mfa       = false
   trusted_role_services   = ["events.amazonaws.com"]
   trusted_role_actions    = ["sts:AssumeRole"]
