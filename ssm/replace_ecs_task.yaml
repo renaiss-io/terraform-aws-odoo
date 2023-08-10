@@ -10,6 +10,7 @@ parameters:
       the actions on your behalf. If no role is specified, Systems Manager Automation
       uses your IAM permissions to use this runbook."
     default: ''
+    
   Cluster:
     type: String
     description: "ECS cluster to update"
