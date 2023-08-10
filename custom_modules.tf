@@ -114,6 +114,7 @@ resource "aws_datasync_location_s3" "odoo_bucket_modules" {
   subdirectory  = "/modules/"
   tags          = var.tags
 
+  depends_on = [ aws_iam_role_policy.datasync_s3_access ]
   s3_config {
     bucket_access_role_arn = module.datasync_role.iam_role_arn
   }
@@ -124,6 +125,7 @@ resource "aws_datasync_location_s3" "odoo_bucket_python" {
   subdirectory  = "/python/"
   tags          = var.tags
 
+  depends_on = [ aws_iam_role_policy.datasync_s3_access ]
   s3_config {
     bucket_access_role_arn = module.datasync_role.iam_role_arn
   }
@@ -372,7 +374,7 @@ module "eventbridge_role" {
   create_role             = true
   create_instance_profile = true
   role_requires_mfa       = false
-  trusted_role_services   = ["events.amazonaws.com"]
+  trusted_role_services   = ["events.amazonaws.com", "ssm.amazonaws.com"]
   trusted_role_actions    = ["sts:AssumeRole"]
   tags                    = var.tags
 
@@ -407,6 +409,15 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
 
   policy = templatefile("${path.module}/iam/ecs_update_service.json", {
     service = module.ecs_service.id
+  })
+}
+
+resource "aws_iam_role_policy" "ssm_iam_pass_role" {
+  name = "${var.name}-smm-iam-pass-role"
+  role = module.eventbridge_role.iam_role_name
+
+  policy = templatefile("${path.module}/iam/iam_pass_role.json", {
+    arn = aws_ssm_document.ecs_replace_task.arn
   })
 }
 
@@ -496,6 +507,7 @@ resource "aws_cloudwatch_event_target" "ecr_push" {
   input = jsonencode({
     Cluster = [module.ecs_cluster.cluster_name]
     Service = [module.ecs_service.name]
+    AutomationAssumeRole = [module.eventbridge_role.iam_role_arn]
   })
 }
 
