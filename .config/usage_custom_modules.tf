@@ -1,4 +1,4 @@
-module "odoo_complete" {
+module "odoo_custom_modules" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
 
   # Custom modules files

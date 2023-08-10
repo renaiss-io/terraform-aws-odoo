@@ -1,7 +1,7 @@
 <!-- BEGIN_TF_DOCS -->
 # Odoo in AWS
 
-This module deploys [odoo](https://odoo.com) in AWS using:
+This module deploys [odoo](https://odoo.com) in [AWS](https://aws.amazon.com/) using:
 
 - **ECS** backed with EC2 to run the containerized version of odoo server
 - **RDS** for the postgres database
@@ -113,7 +113,7 @@ module "acm" {
 
 **Usage with custom modules**
 ```hcl
-module "odoo_complete" {
+module "odoo_custom_modules" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
 
   # Custom modules files

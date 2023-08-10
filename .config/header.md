@@ -1,6 +1,6 @@
 # Odoo in AWS
 
-This module deploys [odoo](https://odoo.com) in AWS using:
+This module deploys [odoo](https://odoo.com) in [AWS](https://aws.amazon.com/) using:
 
 - **ECS** backed with EC2 to run the containerized version of odoo server
 - **RDS** for the postgres database
