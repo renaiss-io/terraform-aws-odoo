@@ -166,32 +166,29 @@ module "alb" {
     }
   ]
 
-  http_tcp_listeners = local.custom_domain ? [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+  http_tcp_listeners = local.custom_domain ? [{
+    port        = 80
+    protocol    = "HTTP"
+    action_type = "redirect"
 
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
+    redirect = {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = local.cloudfront_custom_domain
     }
-    ] : [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+    }] : [{
+    port        = 80
+    protocol    = "HTTP"
+    action_type = "redirect"
 
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-        host        = module.cdn.cloudfront_distribution_domain_name
-      }
+    redirect = {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = module.cdn.cloudfront_distribution_domain_name
     }
-  ]
+  }]
 
   http_tcp_listener_rules = local.custom_domain ? [] : [{
     http_tcp_listener_index = 0
