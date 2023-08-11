@@ -110,17 +110,20 @@ resource "aws_datasync_location_efs" "odoo_filestore_python" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_modules" {
-  depends_on    = [aws_iam_role_policy.datasync_s3_access]
+  depends_on = [aws_iam_role_policy.datasync_s3_access]
+
   s3_bucket_arn = module.s3_bucket.s3_bucket_arn
   subdirectory  = "/modules/"
   tags          = var.tags
+
   s3_config {
     bucket_access_role_arn = module.datasync_role.iam_role_arn
   }
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_python" {
-  depends_on    = [aws_iam_role_policy.datasync_s3_access]
+  depends_on = [aws_iam_role_policy.datasync_s3_access]
+
   s3_bucket_arn = module.s3_bucket.s3_bucket_arn
   subdirectory  = "/python/"
   tags          = var.tags
@@ -416,7 +419,7 @@ resource "aws_iam_role_policy" "ssm_iam_pass_role" {
   role = module.eventbridge_role.iam_role_name
 
   policy = templatefile("${path.module}/iam/iam_pass_role.json", {
-    arn = aws_ssm_document.ecs_replace_task.arn
+    arn = module.eventbridge_role.iam_role_arn
   })
 }
 
