@@ -36,7 +36,6 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 }
 
 resource "aws_s3_object" "module_files" {
-  count    = (local.modules_files_len) ? 1 : 0
   for_each = local.modules_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -47,7 +46,6 @@ resource "aws_s3_object" "module_files" {
 }
 
 resource "aws_s3_object" "python_dependencies" {
-  count    = (local.python_files_len) ? 1 : 0
   for_each = local.python_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -182,6 +180,8 @@ resource "aws_iam_role_policy" "datasync_efs_access" {
 }
 
 resource "aws_datasync_task" "sync_modules" {
+  count = (local.modules_files_len) ? 1 : 0
+
   name                     = "${var.name}-modules"
   source_location_arn      = aws_datasync_location_s3.odoo_bucket_modules[0].arn
   destination_location_arn = aws_datasync_location_efs.odoo_filestore_addons[0].arn
@@ -197,7 +197,7 @@ resource "aws_datasync_task" "sync_modules" {
 }
 
 resource "aws_datasync_task" "sync_python_packages" {
-  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+  count = (local.python_files_len) ? 1 : 0
 
   name                     = "${var.name}-python"
   source_location_arn      = aws_datasync_location_s3.odoo_bucket_python[0].arn
@@ -416,14 +416,25 @@ resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
   })
 }
 
-resource "aws_iam_role_policy" "eventbridge_run_tasks" {
-  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
+  count = (local.python_files_len) ? 1 : 0
 
-  name = "${var.name}-eventbridge-run-task"
+  name = "${var.name}-eventbridge-run-task-python"
   role = module.eventbridge_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/run_datasync.json", {
-    tasks = [aws_datasync_task.sync_modules.arn, aws_datasync_task.sync_python_packages.arn]
+    tasks = [aws_datasync_task.sync_python_packages[0].arn]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
+  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+
+  name = "${var.name}-eventbridge-run-task-modules"
+  role = module.eventbridge_role[0].iam_role_name
+
+  policy = templatefile("${path.module}/iam/run_datasync.json", {
+    tasks = [aws_datasync_task.sync_modules[0].arn]
   })
 }
 
@@ -477,11 +488,11 @@ resource "aws_cloudwatch_event_target" "modules_sync" {
   count = local.modules_files_len ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.modules_sync[0].name
-  arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
+  arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
-    TaskArn = [aws_datasync_task.sync_modules.arn]
+    TaskArn = [aws_datasync_task.sync_modules[0].arn]
   })
 }
 
@@ -501,12 +512,12 @@ resource "aws_cloudwatch_event_rule" "python_files_sync" {
 resource "aws_cloudwatch_event_target" "python_files_sync" {
   count = local.python_files_len ? 1 : 0
 
-  rule     = aws_cloudwatch_event_rule.python_files_sync.name
-  arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
+  rule     = aws_cloudwatch_event_rule.python_files_sync[0].name
+  arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
-    TaskArn = [aws_datasync_task.sync_python_packages.arn]
+    TaskArn = [aws_datasync_task.sync_python_packages[0].arn]
   })
 }
 
@@ -527,7 +538,7 @@ resource "aws_cloudwatch_event_target" "ecr_push" {
   count = local.custom_image ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.ecr_push[0].name
-  arn      = "${replace(aws_ssm_document.ecs_replace_task.arn, "document", "automation-definition")}:$DEFAULT"
+  arn      = "${replace(aws_ssm_document.ecs_replace_task[0].arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
