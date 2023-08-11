@@ -36,8 +36,8 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 }
 
 resource "aws_s3_object" "module_files" {
-  count = (local.modules_files_len ) ? 1 : 0
-  for_each = local.modules_files_len
+  count    = (local.modules_files_len) ? 1 : 0
+  for_each = local.modules_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
   key          = "modules/${each.value.object}"
@@ -47,7 +47,7 @@ resource "aws_s3_object" "module_files" {
 }
 
 resource "aws_s3_object" "python_dependencies" {
-  count = (local.python_files_len) ? 1 : 0
+  count    = (local.python_files_len) ? 1 : 0
   for_each = local.python_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -90,7 +90,7 @@ resource "aws_s3_object" "python_requirements_file" {
 #
 ######################################################################################
 resource "aws_datasync_location_efs" "odoo_filestore_addons" {
-  count = (local.modules_files_len) ? 1:0 
+  count = (local.modules_files_len) ? 1 : 0
 
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["addons"].arn
@@ -105,8 +105,8 @@ resource "aws_datasync_location_efs" "odoo_filestore_addons" {
 }
 
 resource "aws_datasync_location_efs" "odoo_filestore_python" {
-  count= (local.python_files_len) ? 1:0
-  
+  count = (local.python_files_len) ? 1 : 0
+
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["python_packages"].arn
   file_system_access_role_arn = module.datasync_role[0].iam_role_arn
@@ -120,6 +120,8 @@ resource "aws_datasync_location_efs" "odoo_filestore_python" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_modules" {
+  count = (local.modules_files_len) ? 1 : 0
+
   s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/modules/"
   tags          = var.tags
@@ -130,6 +132,8 @@ resource "aws_datasync_location_s3" "odoo_bucket_modules" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_python" {
+  count = (local.python_files_len) ? 1 : 0
+
   s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/python/"
   tags          = var.tags
@@ -156,6 +160,8 @@ module "datasync_role" {
 }
 
 resource "aws_iam_role_policy" "datasync_s3_access" {
+  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+
   name = "${var.name}-datasync-bucket-access"
   role = module.datasync_role[0].iam_role_name
 
@@ -165,6 +171,8 @@ resource "aws_iam_role_policy" "datasync_s3_access" {
 }
 
 resource "aws_iam_role_policy" "datasync_efs_access" {
+  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+
   name = "${var.name}-datasync-efs-access"
   role = module.datasync_role[0].iam_role_name
 
@@ -175,8 +183,8 @@ resource "aws_iam_role_policy" "datasync_efs_access" {
 
 resource "aws_datasync_task" "sync_modules" {
   name                     = "${var.name}-modules"
-  source_location_arn      = aws_datasync_location_s3.odoo_bucket_modules.arn
-  destination_location_arn = aws_datasync_location_efs.odoo_filestore_addons.arn
+  source_location_arn      = aws_datasync_location_s3.odoo_bucket_modules[0].arn
+  destination_location_arn = aws_datasync_location_efs.odoo_filestore_addons[0].arn
   tags                     = var.tags
 
   options {
@@ -189,9 +197,11 @@ resource "aws_datasync_task" "sync_modules" {
 }
 
 resource "aws_datasync_task" "sync_python_packages" {
+  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+
   name                     = "${var.name}-python"
-  source_location_arn      = aws_datasync_location_s3.odoo_bucket_python.arn
-  destination_location_arn = aws_datasync_location_efs.odoo_filestore_python.arn
+  source_location_arn      = aws_datasync_location_s3.odoo_bucket_python[0].arn
+  destination_location_arn = aws_datasync_location_efs.odoo_filestore_python[0].arn
   tags                     = var.tags
 
   options {
@@ -444,7 +454,7 @@ resource "aws_cloudwatch_event_rule" "image_build" {
 
 resource "aws_cloudwatch_event_target" "image_build_target" {
   count = local.custom_image ? 1 : 0
-  
+
   rule     = aws_cloudwatch_event_rule.image_build[0].name
   arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
   role_arn = module.eventbridge_role[0].iam_role_arn
@@ -465,7 +475,7 @@ resource "aws_cloudwatch_event_rule" "modules_sync" {
 
 resource "aws_cloudwatch_event_target" "modules_sync" {
   count = local.modules_files_len ? 1 : 0
-  
+
   rule     = aws_cloudwatch_event_rule.modules_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
