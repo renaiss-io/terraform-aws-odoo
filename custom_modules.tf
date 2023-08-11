@@ -11,7 +11,15 @@
 # containing the modules (similar to how the path variable is set in the odoo server).
 #
 ######################################################################################
+locals {
+  mime_types    = jsondecode(file("${path.module}/util/mime.json"))
+  modules_files = merge([for k, v in { for path in var.odoo_custom_modules_paths : path => fileset(path, "*/**") } : { for path in v : "${k}/${path}" => { src = k, object = path } if !anytrue([for filter in var.extra_files_filter : strcontains("${k}/${path}", filter)]) }]...)
+  python_files  = merge([for k, v in { for path in var.odoo_python_dependencies_paths : path => fileset(path, "**") } : { for path in v : "${k}/${path}" => { src = k, object = path } if !anytrue([for filter in var.extra_files_filter : strcontains("${k}/${path}", filter)]) }]...)
+}
+
 module "s3_bucket" {
+  count = (var.python_requirements_file != null || var.odoo_custom_modules_paths != []) ? 1 : 0
+
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 3.14"
 
@@ -23,12 +31,6 @@ module "s3_bucket" {
 resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket      = module.s3_bucket.s3_bucket_id
   eventbridge = true
-}
-
-locals {
-  mime_types    = jsondecode(file("${path.module}/util/mime.json"))
-  modules_files = merge([for k, v in { for path in var.odoo_custom_modules_paths : path => fileset(path, "*/**") } : { for path in v : "${k}/${path}" => { src = k, object = path } if !anytrue([for filter in var.extra_files_filter : strcontains("${k}/${path}", filter)]) }]...)
-  python_files  = merge([for k, v in { for path in var.odoo_python_dependencies_paths : path => fileset(path, "**") } : { for path in v : "${k}/${path}" => { src = k, object = path } if !anytrue([for filter in var.extra_files_filter : strcontains("${k}/${path}", filter)]) }]...)
 }
 
 resource "aws_s3_object" "module_files" {
