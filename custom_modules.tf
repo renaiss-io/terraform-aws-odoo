@@ -428,7 +428,7 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
-  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+  count = (local.modules_files_len) ? 1 : 0
 
   name = "${var.name}-eventbridge-run-task-modules"
   role = module.eventbridge_role[0].iam_role_name
