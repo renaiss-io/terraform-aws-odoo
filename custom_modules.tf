@@ -29,11 +29,14 @@ module "s3_bucket" {
 }
 
 resource "aws_s3_bucket_notification" "bucket_notification" {
+  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
+
   bucket      = module.s3_bucket[0].s3_bucket_id
   eventbridge = true
 }
 
 resource "aws_s3_object" "module_files" {
+  count = (local.modules_files_len ) ? 1 : 0
   for_each = local.modules_files_len
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -44,6 +47,7 @@ resource "aws_s3_object" "module_files" {
 }
 
 resource "aws_s3_object" "python_dependencies" {
+  count = (local.python_files_len) ? 1 : 0
   for_each = local.python_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -86,6 +90,8 @@ resource "aws_s3_object" "python_requirements_file" {
 #
 ######################################################################################
 resource "aws_datasync_location_efs" "odoo_filestore_addons" {
+  count = (local.modules_files_len) ? 1:0 
+
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["addons"].arn
   file_system_access_role_arn = module.datasync_role[0].iam_role_arn
@@ -99,6 +105,8 @@ resource "aws_datasync_location_efs" "odoo_filestore_addons" {
 }
 
 resource "aws_datasync_location_efs" "odoo_filestore_python" {
+  count= (local.python_files_len) ? 1:0
+  
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["python_packages"].arn
   file_system_access_role_arn = module.datasync_role[0].iam_role_arn
@@ -435,6 +443,8 @@ resource "aws_cloudwatch_event_rule" "image_build" {
 }
 
 resource "aws_cloudwatch_event_target" "image_build_target" {
+  count = local.custom_image ? 1 : 0
+  
   rule     = aws_cloudwatch_event_rule.image_build[0].name
   arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
   role_arn = module.eventbridge_role[0].iam_role_arn
@@ -454,6 +464,8 @@ resource "aws_cloudwatch_event_rule" "modules_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "modules_sync" {
+  count = local.modules_files_len ? 1 : 0
+  
   rule     = aws_cloudwatch_event_rule.modules_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
@@ -477,6 +489,8 @@ resource "aws_cloudwatch_event_rule" "python_files_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "python_files_sync" {
+  count = local.python_files_len ? 1 : 0
+
   rule     = aws_cloudwatch_event_rule.python_files_sync.name
   arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
@@ -500,6 +514,8 @@ resource "aws_cloudwatch_event_rule" "ecr_push" {
 }
 
 resource "aws_cloudwatch_event_target" "ecr_push" {
+  count = local.custom_image ? 1 : 0
+
   rule     = aws_cloudwatch_event_rule.ecr_push[0].name
   arn      = "${replace(aws_ssm_document.ecs_replace_task.arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
