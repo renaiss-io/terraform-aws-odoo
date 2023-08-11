@@ -18,10 +18,10 @@ locals {
 }
 
 module "s3_bucket" {
-  count = (var.python_requirements_file != null || var.odoo_custom_modules_paths != []) ? 1 : 0
-
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 3.14"
+
+  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
 
   bucket        = "${var.name}-odoo-custom"
   tags          = var.tags
@@ -29,14 +29,14 @@ module "s3_bucket" {
 }
 
 resource "aws_s3_bucket_notification" "bucket_notification" {
-  bucket      = module.s3_bucket.s3_bucket_id
+  bucket      = module.s3_bucket[0].s3_bucket_id
   eventbridge = true
 }
 
 resource "aws_s3_object" "module_files" {
-  for_each = local.modules_files
+  for_each = local.modules_files_len
 
-  bucket       = module.s3_bucket.s3_bucket_id
+  bucket       = module.s3_bucket[0].s3_bucket_id
   key          = "modules/${each.value.object}"
   source       = each.key
   etag         = filemd5(each.key)
@@ -46,7 +46,7 @@ resource "aws_s3_object" "module_files" {
 resource "aws_s3_object" "python_dependencies" {
   for_each = local.python_files
 
-  bucket       = module.s3_bucket.s3_bucket_id
+  bucket       = module.s3_bucket[0].s3_bucket_id
   key          = "python/${each.value.object}"
   source       = each.key
   etag         = filemd5(each.key)
@@ -54,17 +54,17 @@ resource "aws_s3_object" "python_dependencies" {
 }
 
 resource "aws_s3_object" "python_requirements_file" {
-  count = var.python_requirements_file != null ? 1 : 0
+  count = local.custom_image ? 1 : 0
 
   # Wait for bucket and events to be created for
   # the first trigger to happen on object creation
   depends_on = [
-    aws_cloudwatch_event_rule.image_build,
-    aws_cloudwatch_event_target.image_build_target,
-    aws_s3_bucket_notification.bucket_notification
+    aws_cloudwatch_event_rule.image_build[0],
+    aws_cloudwatch_event_target.image_build_target[0],
+    aws_s3_bucket_notification.bucket_notification[0]
   ]
 
-  bucket       = module.s3_bucket.s3_bucket_id
+  bucket       = module.s3_bucket[0].s3_bucket_id
   key          = local.requirements_file_object
   source       = var.python_requirements_file
   etag         = filemd5(var.python_requirements_file)
@@ -88,7 +88,7 @@ resource "aws_s3_object" "python_requirements_file" {
 resource "aws_datasync_location_efs" "odoo_filestore_addons" {
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["addons"].arn
-  file_system_access_role_arn = module.datasync_role.iam_role_arn
+  file_system_access_role_arn = module.datasync_role[0].iam_role_arn
   in_transit_encryption       = "TLS1_2"
   tags                        = var.tags
 
@@ -101,7 +101,7 @@ resource "aws_datasync_location_efs" "odoo_filestore_addons" {
 resource "aws_datasync_location_efs" "odoo_filestore_python" {
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["python_packages"].arn
-  file_system_access_role_arn = module.datasync_role.iam_role_arn
+  file_system_access_role_arn = module.datasync_role[0].iam_role_arn
   in_transit_encryption       = "TLS1_2"
   tags                        = var.tags
 
@@ -112,28 +112,30 @@ resource "aws_datasync_location_efs" "odoo_filestore_python" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_modules" {
-  s3_bucket_arn = module.s3_bucket.s3_bucket_arn
+  s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/modules/"
   tags          = var.tags
 
   s3_config {
-    bucket_access_role_arn = module.datasync_role.iam_role_arn
+    bucket_access_role_arn = module.datasync_role[0].iam_role_arn
   }
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_python" {
-  s3_bucket_arn = module.s3_bucket.s3_bucket_arn
+  s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/python/"
   tags          = var.tags
 
   s3_config {
-    bucket_access_role_arn = module.datasync_role.iam_role_arn
+    bucket_access_role_arn = module.datasync_role[0].iam_role_arn
   }
 }
 
 module "datasync_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "~> 5.27"
+
+  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
 
   role_name               = "${var.name}-datasync"
   role_description        = "IAM role for ${var.name} data sync"
@@ -147,16 +149,16 @@ module "datasync_role" {
 
 resource "aws_iam_role_policy" "datasync_s3_access" {
   name = "${var.name}-datasync-bucket-access"
-  role = module.datasync_role.iam_role_name
+  role = module.datasync_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/datasync_s3.json", {
-    bucket = module.s3_bucket.s3_bucket_id
+    bucket = module.s3_bucket[0].s3_bucket_id
   })
 }
 
 resource "aws_iam_role_policy" "datasync_efs_access" {
   name = "${var.name}-datasync-efs-access"
-  role = module.datasync_role.iam_role_name
+  role = module.datasync_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/datasync_efs.json", {
     efs = module.efs.arn
@@ -247,7 +249,7 @@ resource "aws_iam_role_policy" "image_builder_role_modules_bucket_access" {
   role = module.image_builder_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/bucket_read.json", {
-    bucket = module.s3_bucket.s3_bucket_id
+    bucket = module.s3_bucket[0].s3_bucket_id
   })
 }
 
@@ -261,7 +263,7 @@ resource "aws_imagebuilder_component" "install_python_dependencies" {
   tags        = var.tags
 
   data = templatefile("${path.module}/image_builder/install_python_dependencies.yaml", {
-    source = "${module.s3_bucket.s3_bucket_id}/${local.requirements_file_object}"
+    source = "${module.s3_bucket[0].s3_bucket_id}/${local.requirements_file_object}"
   })
 }
 
@@ -369,6 +371,8 @@ module "eventbridge_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "~> 5.27"
 
+  count = (local.python_files_len || local.modules_files_len || local.custom_image) ? 1 : 0
+
   role_name               = "${var.name}-eventbridge"
   role_description        = "IAM role for ${var.name} eventbridge"
   create_role             = true
@@ -387,7 +391,7 @@ resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
   count = local.custom_image ? 1 : 0
 
   name = "${var.name}-eventbridge-image-pipeline"
-  role = module.eventbridge_role.iam_role_name
+  role = module.eventbridge_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
     image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
@@ -395,17 +399,22 @@ resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_run_tasks" {
+  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+
   name = "${var.name}-eventbridge-run-task"
-  role = module.eventbridge_role.iam_role_name
+  role = module.eventbridge_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/run_datasync.json", {
     tasks = [aws_datasync_task.sync_modules.arn, aws_datasync_task.sync_python_packages.arn]
   })
 }
 
+# TODO: I think that is not necessary to update the ecs service if new modules/python dependencies are uploaded into the bucket
 resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
+  count = local.custom_image ? 1 : 0
+
   name = "${var.name}-eventbridge-update-ecs-service"
-  role = module.eventbridge_role.iam_role_name
+  role = module.eventbridge_role[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/ecs_update_service.json", {
     service = module.ecs_service.id
@@ -420,34 +429,34 @@ resource "aws_cloudwatch_event_rule" "image_build" {
   tags        = var.tags
 
   event_pattern = templatefile("${path.module}/eventbridge/s3_object_rule.json", {
-    bucket = module.s3_bucket.s3_bucket_id
+    bucket = module.s3_bucket[0].s3_bucket_id
     object = local.requirements_file_object
   })
 }
 
 resource "aws_cloudwatch_event_target" "image_build_target" {
-  count = local.custom_image ? 1 : 0
-
   rule     = aws_cloudwatch_event_rule.image_build[0].name
   arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  role_arn = module.eventbridge_role.iam_role_arn
+  role_arn = module.eventbridge_role[0].iam_role_arn
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
+  count = local.modules_files_len ? 1 : 0
+
   name        = "${var.name}-modules-sync"
   description = "Sync modules files stored in s3"
   tags        = var.tags
 
   event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
-    bucket = module.s3_bucket.s3_bucket_id
+    bucket = module.s3_bucket[0].s3_bucket_id
     prefix = "modules/"
   })
 }
 
 resource "aws_cloudwatch_event_target" "modules_sync" {
-  rule     = aws_cloudwatch_event_rule.modules_sync.name
+  rule     = aws_cloudwatch_event_rule.modules_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role.iam_role_arn
+  role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
     TaskArn = [aws_datasync_task.sync_modules.arn]
@@ -455,12 +464,14 @@ resource "aws_cloudwatch_event_target" "modules_sync" {
 }
 
 resource "aws_cloudwatch_event_rule" "python_files_sync" {
+  count = local.python_files_len ? 1 : 0
+
   name        = "${var.name}-python-files-sync"
   description = "Sync python files stored in s3"
   tags        = var.tags
 
   event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
-    bucket = module.s3_bucket.s3_bucket_id
+    bucket = module.s3_bucket[0].s3_bucket_id
     prefix = "python/"
   })
 }
@@ -468,7 +479,7 @@ resource "aws_cloudwatch_event_rule" "python_files_sync" {
 resource "aws_cloudwatch_event_target" "python_files_sync" {
   rule     = aws_cloudwatch_event_rule.python_files_sync.name
   arn      = "${replace(aws_ssm_document.datasync.arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role.iam_role_arn
+  role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
     TaskArn = [aws_datasync_task.sync_python_packages.arn]
@@ -489,11 +500,9 @@ resource "aws_cloudwatch_event_rule" "ecr_push" {
 }
 
 resource "aws_cloudwatch_event_target" "ecr_push" {
-  count = local.custom_image ? 1 : 0
-
   rule     = aws_cloudwatch_event_rule.ecr_push[0].name
   arn      = "${replace(aws_ssm_document.ecs_replace_task.arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role.iam_role_arn
+  role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
     Cluster = [module.ecs_cluster.cluster_name]
@@ -502,6 +511,8 @@ resource "aws_cloudwatch_event_target" "ecr_push" {
 }
 
 resource "aws_ssm_document" "datasync" {
+  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+
   name            = "${var.name}-run-datasync"
   document_format = "YAML"
   document_type   = "Automation"
@@ -510,6 +521,8 @@ resource "aws_ssm_document" "datasync" {
 }
 
 resource "aws_ssm_document" "ecs_replace_task" {
+  count = (local.custom_image) ? 1 : 0
+
   name            = "${var.name}-ecs-replace-task"
   document_format = "YAML"
   document_type   = "Automation"
