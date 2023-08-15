@@ -453,6 +453,12 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
 resource "aws_cloudwatch_event_rule" "image_build" {
   count = local.custom_image ? 1 : 0
 
+  depends_on = [
+    aws_s3_bucket_notification.bucket_notification[0],
+    aws_ecr_repository.odoo[0],
+    module.eventbridge_role[0]
+  ]
+  
   name        = "${var.name}-image-build"
   description = "Rebuild image when requirements.txt changes"
   tags        = var.tags
@@ -461,7 +467,7 @@ resource "aws_cloudwatch_event_rule" "image_build" {
     bucket = module.s3_bucket[0].s3_bucket_id
     object = local.requirements_file_object
   })
-}
+} 
 
 resource "aws_cloudwatch_event_target" "image_build_target" {
   count = local.custom_image ? 1 : 0
