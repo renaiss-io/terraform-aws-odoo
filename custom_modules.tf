@@ -412,7 +412,7 @@ module "eventbridge_role2" {
   count = (local.custom_image) ? 1 : 0
 
   role_name               = "${var.name}-eventbridge-image-pipeline-role"
-  role_description        = "IAM role for ${var.name} eventbridge"
+  role_description        = "IAM role for ${var.name} eventbridge image pipeline"
   create_role             = true
   create_instance_profile = false
   role_requires_mfa       = false
