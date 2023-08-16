@@ -405,11 +405,31 @@ module "eventbridge_role" {
   ]
 }
 
-resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
-  count = local.custom_image ? 1 : 0
+module "eventbridge_role2" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
+  version = "~> 5.27"
 
-  name = "${var.name}-eventbridge-image-pipeline"
-  role = module.eventbridge_role[0].iam_role_name
+  count = (local.custom_image) ? 1 : 0
+
+  role_name               = "${var.name}-eventbridge-image-pipeline-role"
+  role_description        = "IAM role for ${var.name} eventbridge"
+  create_role             = true
+  create_instance_profile = false
+  role_requires_mfa       = false
+  trusted_role_services   = ["events.amazonaws.com", "imagebuilder.amazonaws.com"]
+  trusted_role_actions    = ["sts:AssumeRole"]
+  tags                    = var.tags
+
+  custom_role_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+  ]
+}
+
+resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
+  count = (local.custom_image) ? 1 : 0
+  
+  name       = "${var.name}-eventbridge-image-pipeline"
+  role       = module.eventbridge_role2[0].iam_role_name
 
   policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
     image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
@@ -453,12 +473,6 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
 resource "aws_cloudwatch_event_rule" "image_build" {
   count = local.custom_image ? 1 : 0
 
-  depends_on = [
-    aws_s3_bucket_notification.bucket_notification[0],
-    aws_ecr_repository.odoo[0],
-    module.eventbridge_role[0]
-  ]
-  
   name        = "${var.name}-image-build"
   description = "Rebuild image when requirements.txt changes"
   tags        = var.tags
@@ -467,14 +481,14 @@ resource "aws_cloudwatch_event_rule" "image_build" {
     bucket = module.s3_bucket[0].s3_bucket_id
     object = local.requirements_file_object
   })
-} 
+}
 
 resource "aws_cloudwatch_event_target" "image_build_target" {
   count = local.custom_image ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.image_build[0].name
   arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  role_arn = module.eventbridge_role[0].iam_role_arn
+  role_arn = module.eventbridge_role2[0].iam_role_arn
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
