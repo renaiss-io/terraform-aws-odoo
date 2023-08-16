@@ -63,7 +63,7 @@ resource "aws_s3_object" "python_requirements_file" {
   depends_on = [
     aws_cloudwatch_event_rule.image_build[0],
     aws_cloudwatch_event_target.image_build_target[0],
-    aws_s3_bucket_notification.bucket_notification[0]
+  aws_s3_bucket_notification.bucket_notification[0]
   ]
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -405,36 +405,6 @@ module "eventbridge_role" {
   ]
 }
 
-module "eventbridge_role2" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
-  version = "~> 5.27"
-
-  count = (local.custom_image) ? 1 : 0
-
-  role_name               = "${var.name}-eventbridge-image-pipeline-role"
-  role_description        = "IAM role for ${var.name} eventbridge image pipeline"
-  create_role             = true
-  create_instance_profile = false
-  role_requires_mfa       = false
-  trusted_role_services   = ["events.amazonaws.com", "imagebuilder.amazonaws.com"]
-  trusted_role_actions    = ["sts:AssumeRole"]
-  tags                    = var.tags
-
-  custom_role_policy_arns = [
-    "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
-  ]
-}
-
-resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
-  count = (local.custom_image) ? 1 : 0
-  
-  name       = "${var.name}-eventbridge-image-pipeline"
-  role       = module.eventbridge_role2[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
-    image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  })
-}
 
 resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
   count = (local.python_files_len) ? 1 : 0
@@ -458,7 +428,6 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
   })
 }
 
-# TODO: I think that is not necessary to update the ecs service if new modules/python dependencies are uploaded into the bucket
 resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
   count = local.custom_image ? 1 : 0
 
