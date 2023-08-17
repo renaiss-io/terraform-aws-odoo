@@ -63,7 +63,7 @@ resource "aws_s3_object" "python_requirements_file" {
   depends_on = [
     aws_cloudwatch_event_rule.image_build[0],
     aws_cloudwatch_event_target.image_build_target[0],
-  aws_s3_bucket_notification.bucket_notification[0]
+    aws_s3_bucket_notification.bucket_notification[0]
   ]
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -226,7 +226,7 @@ resource "aws_datasync_task" "sync_python_packages" {
 #
 ######################################################################################
 resource "aws_ecr_repository" "odoo" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
 
   name                 = var.name
   image_tag_mutability = "MUTABLE"
@@ -268,6 +268,17 @@ resource "aws_iam_role_policy" "image_builder_role_modules_bucket_access" {
 
   policy = templatefile("${path.module}/iam/bucket_read.json", {
     bucket = module.s3_bucket[0].s3_bucket_id
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline2" {
+  count = local.custom_image ? 1 : 0
+
+  name = "${var.name}-eventbridge-image-pipeline2"
+  role = module.image_builder_role[0].iam_role_name
+
+  policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
+    image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
   })
 }
 
@@ -396,7 +407,7 @@ module "eventbridge_role" {
   create_role             = true
   create_instance_profile = false
   role_requires_mfa       = false
-  trusted_role_services   = ["events.amazonaws.com"]
+  trusted_role_services   = ["events.amazonaws.com", "ssm.amazonaws.com"]
   trusted_role_actions    = ["sts:AssumeRole"]
   tags                    = var.tags
 
@@ -405,6 +416,16 @@ module "eventbridge_role" {
   ]
 }
 
+resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
+  count = local.custom_image ? 1 : 0
+
+  name = "${var.name}-eventbridge-image-pipeline"
+  role = module.eventbridge_role[0].iam_role_name
+
+  policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
+    image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
+  })
+}
 
 resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
   count = (local.python_files_len) ? 1 : 0
@@ -457,7 +478,7 @@ resource "aws_cloudwatch_event_target" "image_build_target" {
 
   rule     = aws_cloudwatch_event_rule.image_build[0].name
   arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  role_arn = module.eventbridge_role2[0].iam_role_arn
+  role_arn = module.eventbridge_role[0].iam_role_arn
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
