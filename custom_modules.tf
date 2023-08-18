@@ -29,10 +29,17 @@ module "s3_bucket" {
 }
 
 resource "aws_s3_bucket_notification" "bucket_notification" {
-  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
+  # Wait for lambda to be created for trigger creation
+  depends_on = [module.lambda[0]]
 
-  bucket      = module.s3_bucket[0].s3_bucket_id
-  eventbridge = true
+  bucket = module.s3_bucket[0].s3_bucket_id
+
+  lambda_function {
+    lambda_function_arn = module.lambda[0].lambda_function_arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = local.requirements_file_object
+  }
 }
 
 resource "aws_s3_object" "module_files" {
@@ -56,13 +63,11 @@ resource "aws_s3_object" "python_dependencies" {
 }
 
 resource "aws_s3_object" "python_requirements_file" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   # Wait for bucket and events to be created for
   # the first trigger to happen on object creation
   depends_on = [
-    aws_cloudwatch_event_rule.image_build[0],
-    aws_cloudwatch_event_target.image_build_target[0],
     aws_s3_bucket_notification.bucket_notification[0]
   ]
 
@@ -242,7 +247,7 @@ module "image_builder_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "~> 5.27"
 
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   role_name               = "${var.name}-image-builder"
   role_description        = "IAM role for ${var.name} image builder"
@@ -261,7 +266,7 @@ module "image_builder_role" {
 }
 
 resource "aws_iam_role_policy" "image_builder_role_modules_bucket_access" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name = "${var.name}-modules-bucket-access"
   role = module.image_builder_role[0].iam_role_name
@@ -272,7 +277,7 @@ resource "aws_iam_role_policy" "image_builder_role_modules_bucket_access" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline2" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name = "${var.name}-eventbridge-image-pipeline2"
   role = module.image_builder_role[0].iam_role_name
@@ -283,7 +288,7 @@ resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline2" {
 }
 
 resource "aws_imagebuilder_component" "install_python_dependencies" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name        = "${var.name}-install-python-dependencies"
   description = "Component to install extra python dependencies for odoo in ${var.name}"
@@ -297,7 +302,7 @@ resource "aws_imagebuilder_component" "install_python_dependencies" {
 }
 
 resource "aws_imagebuilder_container_recipe" "odoo_container" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name                     = var.name
   description              = "Recipe for ${var.name} custom image"
@@ -319,7 +324,7 @@ resource "aws_imagebuilder_container_recipe" "odoo_container" {
 }
 
 resource "aws_imagebuilder_infrastructure_configuration" "odoo_container" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name                          = var.name
   description                   = "Infrastructure configuration for ${var.name} custom image"
@@ -336,7 +341,7 @@ module "image_builder_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
 
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name            = "${var.name}-image-builder"
   use_name_prefix = false
@@ -347,7 +352,7 @@ module "image_builder_sg" {
 }
 
 resource "aws_imagebuilder_distribution_configuration" "odoo_container" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name        = var.name
   description = "Distribution configuration for ${var.name}"
@@ -368,7 +373,7 @@ resource "aws_imagebuilder_distribution_configuration" "odoo_container" {
 }
 
 resource "aws_imagebuilder_image_pipeline" "odoo_container" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name                             = var.name
   description                      = "Image pipeline for ${var.name}"
@@ -415,18 +420,6 @@ module "eventbridge_role" {
     "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
   ]
 }
-
-resource "aws_iam_role_policy" "eventbridge_execute_image_pipeline" {
-  count = local.custom_image ? 1 : 0
-
-  name = "${var.name}-eventbridge-image-pipeline"
-  role = module.eventbridge_role[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/image_pipeline_execute.json", {
-    image_pipeline = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  })
-}
-
 resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
   count = (local.python_files_len) ? 1 : 0
 
@@ -450,7 +443,7 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name = "${var.name}-eventbridge-update-ecs-service"
   role = module.eventbridge_role[0].iam_role_name
@@ -458,27 +451,6 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
   policy = templatefile("${path.module}/iam/ecs_update_service.json", {
     service = module.ecs_service.id
   })
-}
-
-resource "aws_cloudwatch_event_rule" "image_build" {
-  count = local.custom_image ? 1 : 0
-
-  name        = "${var.name}-image-build"
-  description = "Rebuild image when requirements.txt changes"
-  tags        = var.tags
-
-  event_pattern = templatefile("${path.module}/eventbridge/s3_object_rule.json", {
-    bucket = module.s3_bucket[0].s3_bucket_id
-    object = local.requirements_file_object
-  })
-}
-
-resource "aws_cloudwatch_event_target" "image_build_target" {
-  count = local.custom_image ? 1 : 0
-
-  rule     = aws_cloudwatch_event_rule.image_build[0].name
-  arn      = aws_imagebuilder_image_pipeline.odoo_container[0].arn
-  role_arn = module.eventbridge_role[0].iam_role_arn
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
@@ -532,7 +504,7 @@ resource "aws_cloudwatch_event_target" "python_files_sync" {
 }
 
 resource "aws_cloudwatch_event_rule" "ecr_push" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name        = "${var.name}-ecr-push"
   description = "Replace ECS task on ECR image push"
@@ -545,7 +517,7 @@ resource "aws_cloudwatch_event_rule" "ecr_push" {
 }
 
 resource "aws_cloudwatch_event_target" "ecr_push" {
-  count = local.custom_image ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.ecr_push[0].name
   arn      = "${replace(aws_ssm_document.ecs_replace_task[0].arn, "document", "automation-definition")}:$DEFAULT"
@@ -575,4 +547,46 @@ resource "aws_ssm_document" "ecs_replace_task" {
   document_type   = "Automation"
   content         = file("${path.module}/ssm/replace_ecs_task.yaml")
   tags            = var.tags
+}
+
+
+######################################################################################
+# Lambdas
+#
+# Lambdas to handle different stages of the automations regarding
+# modules management.
+#
+# Custom modules require to watch changes in objects stored in the S3 bucket and
+# execute the image builder pipeline. W/ this integration the automation is able to trigger 
+# a lambda to execute the pipe to build the desired image.   
+######################################################################################
+module "lambda" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  count = (local.custom_image) ? 1 : 0
+
+  description   = "AWS lambda function that triggers image pipe builder s3 object creation/modification"
+  function_name = "${var.name}-lambda"
+  handler       = "image_builder_exec.lambda_handler"
+  runtime       = "python3.10"
+
+  source_path = "${path.module}/lambdas/image_builder_exec.py"
+
+  allowed_triggers = {
+    Config = {
+      principal  = "s3.amazonaws.com"
+      source_arn = module.s3_bucket[0].s3_bucket_arn
+    }
+  }
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb = {
+      effect    = "Allow",
+      actions   = ["imagebuilder:StartImagePipelineExecution"],
+      resources = [aws_imagebuilder_image_pipeline.odoo_container[0].arn]
+  } }
+
+  environment_variables = {
+    IMG_BUILDER_ARN = aws_imagebuilder_image_pipeline.odoo_container[0].arn
+  }
 }
