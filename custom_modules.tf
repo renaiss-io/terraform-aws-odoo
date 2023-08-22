@@ -21,7 +21,7 @@ module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 3.14"
 
-  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
+  count = (local.custom_image || local.modules_files_length || local.python_files_length) ? 1 : 0
 
   bucket        = "${var.name}-odoo-custom"
   tags          = var.tags
@@ -29,20 +29,27 @@ module "s3_bucket" {
 }
 
 resource "aws_s3_bucket_notification" "bucket_notification" {
-  count = (local.custom_image) ? 1 : 0
-  # Wait for lambda to be created for trigger creation
-  depends_on = [module.lambda[0]]
+  count = (local.custom_image || local.modules_files_length || local.python_files_length) ? 1 : 0
 
-  bucket = module.s3_bucket[0].s3_bucket_id
-
-  lambda_function {
-    lambda_function_arn = module.lambda[0].lambda_function_arn
-    events              = ["s3:ObjectCreated:*"]
-    filter_prefix       = local.requirements_file_object
+  bucket      = module.s3_bucket[0].s3_bucket_id
+  eventbridge = true
+  dynamic "lambda_function" {
+    for_each = local.custom_image ? [1] : []
+    content {
+      lambda_function_arn = module.lambda_image_builder[0].lambda_function_arn
+      events              = ["s3:ObjectCreated:*"]
+      filter_prefix       = local.requirements_file_object
+    }
   }
 }
 
 resource "aws_s3_object" "module_files" {
+  depends_on = [
+    aws_cloudwatch_event_target.modules_sync[0],
+    aws_cloudwatch_event_rule.modules_sync[0],
+    aws_s3_bucket_notification.bucket_notification[0]
+  ]
+
   for_each = local.modules_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -53,6 +60,11 @@ resource "aws_s3_object" "module_files" {
 }
 
 resource "aws_s3_object" "python_dependencies" {
+  depends_on = [
+    aws_cloudwatch_event_target.python_files_sync[0],
+    aws_cloudwatch_event_rule.python_files_sync[0],
+    aws_s3_bucket_notification.bucket_notification[0]
+  ]
   for_each = local.python_files
 
   bucket       = module.s3_bucket[0].s3_bucket_id
@@ -67,7 +79,9 @@ resource "aws_s3_object" "python_requirements_file" {
 
   # Wait for bucket and events to be created for
   # the first trigger to happen on object creation
+
   depends_on = [
+    module.lambda_image_builder[0],
     aws_s3_bucket_notification.bucket_notification[0]
   ]
 
@@ -93,7 +107,7 @@ resource "aws_s3_object" "python_requirements_file" {
 #
 ######################################################################################
 resource "aws_datasync_location_efs" "odoo_filestore_addons" {
-  count = (local.modules_files_len) ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["addons"].arn
@@ -108,7 +122,7 @@ resource "aws_datasync_location_efs" "odoo_filestore_addons" {
 }
 
 resource "aws_datasync_location_efs" "odoo_filestore_python" {
-  count = (local.python_files_len) ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   efs_file_system_arn         = module.efs.mount_targets[keys(module.efs.mount_targets)[0]].file_system_arn
   access_point_arn            = module.efs.access_points["python_packages"].arn
@@ -123,7 +137,7 @@ resource "aws_datasync_location_efs" "odoo_filestore_python" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_modules" {
-  count = (local.modules_files_len) ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/modules/"
@@ -135,7 +149,7 @@ resource "aws_datasync_location_s3" "odoo_bucket_modules" {
 }
 
 resource "aws_datasync_location_s3" "odoo_bucket_python" {
-  count = (local.python_files_len) ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   s3_bucket_arn = module.s3_bucket[0].s3_bucket_arn
   subdirectory  = "/python/"
@@ -150,7 +164,7 @@ module "datasync_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "~> 5.27"
 
-  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+  count = (local.python_files_length || local.modules_files_length) ? 1 : 0
 
   role_name               = "${var.name}-datasync"
   role_description        = "IAM role for ${var.name} data sync"
@@ -163,7 +177,7 @@ module "datasync_role" {
 }
 
 resource "aws_iam_role_policy" "datasync_s3_access" {
-  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+  count = (local.python_files_length || local.modules_files_length) ? 1 : 0
 
   name = "${var.name}-datasync-bucket-access"
   role = module.datasync_role[0].iam_role_name
@@ -174,7 +188,7 @@ resource "aws_iam_role_policy" "datasync_s3_access" {
 }
 
 resource "aws_iam_role_policy" "datasync_efs_access" {
-  count = (local.python_files_len || local.modules_files_len) ? 1 : 0
+  count = (local.python_files_length || local.modules_files_length) ? 1 : 0
 
   name = "${var.name}-datasync-efs-access"
   role = module.datasync_role[0].iam_role_name
@@ -185,7 +199,7 @@ resource "aws_iam_role_policy" "datasync_efs_access" {
 }
 
 resource "aws_datasync_task" "sync_modules" {
-  count = (local.modules_files_len) ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   name                     = "${var.name}-modules"
   source_location_arn      = aws_datasync_location_s3.odoo_bucket_modules[0].arn
@@ -202,7 +216,7 @@ resource "aws_datasync_task" "sync_modules" {
 }
 
 resource "aws_datasync_task" "sync_python_packages" {
-  count = (local.python_files_len) ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   name                     = "${var.name}-python"
   source_location_arn      = aws_datasync_location_s3.odoo_bucket_python[0].arn
@@ -231,7 +245,7 @@ resource "aws_datasync_task" "sync_python_packages" {
 #
 ######################################################################################
 resource "aws_ecr_repository" "odoo" {
-  count = (local.custom_image || local.modules_files_len || local.python_files_len) ? 1 : 0
+  count = (local.custom_image || local.modules_files_length || local.python_files_length) ? 1 : 0
 
   name                 = var.name
   image_tag_mutability = "MUTABLE"
@@ -405,7 +419,7 @@ module "eventbridge_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
   version = "~> 5.27"
 
-  count = (local.python_files_len || local.modules_files_len || local.custom_image) ? 1 : 0
+  count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
 
   role_name               = "${var.name}-eventbridge"
   role_description        = "IAM role for ${var.name} eventbridge"
@@ -420,8 +434,17 @@ module "eventbridge_role" {
     "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
   ]
 }
+resource "aws_iam_role_policy" "ssm_iam_pass_role" {
+  name = "${var.name}-smm-iam-pass-role"
+  role = module.eventbridge_role[0].iam_role_name
+
+  policy = templatefile("${path.module}/iam/iam_pass_role.json", {
+    arn = module.eventbridge_role[0].iam_role_arn
+  })
+}
+
 resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
-  count = (local.python_files_len) ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   name = "${var.name}-eventbridge-run-task-python"
   role = module.eventbridge_role[0].iam_role_name
@@ -432,7 +455,7 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
 }
 
 resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
-  count = (local.modules_files_len) ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   name = "${var.name}-eventbridge-run-task-modules"
   role = module.eventbridge_role[0].iam_role_name
@@ -454,7 +477,9 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
-  count = local.modules_files_len ? 1 : 0
+  count = local.modules_files_length ? 1 : 0
+
+  depends_on = [aws_iam_role_policy.eventbridge_run_tasks_modules[0]]
 
   name        = "${var.name}-modules-sync"
   description = "Sync modules files stored in s3"
@@ -467,7 +492,7 @@ resource "aws_cloudwatch_event_rule" "modules_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "modules_sync" {
-  count = local.modules_files_len ? 1 : 0
+  count = local.modules_files_length ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.modules_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
@@ -479,7 +504,9 @@ resource "aws_cloudwatch_event_target" "modules_sync" {
 }
 
 resource "aws_cloudwatch_event_rule" "python_files_sync" {
-  count = local.python_files_len ? 1 : 0
+  count = local.python_files_length ? 1 : 0
+
+  depends_on = [aws_iam_role_policy.eventbridge_run_tasks_python[0]]
 
   name        = "${var.name}-python-files-sync"
   description = "Sync python files stored in s3"
@@ -492,7 +519,7 @@ resource "aws_cloudwatch_event_rule" "python_files_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "python_files_sync" {
-  count = local.python_files_len ? 1 : 0
+  count = local.python_files_length ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.python_files_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
@@ -524,13 +551,14 @@ resource "aws_cloudwatch_event_target" "ecr_push" {
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
-    Cluster = [module.ecs_cluster.cluster_name]
-    Service = [module.ecs_service.name]
+    Cluster              = [module.ecs_cluster.cluster_name]
+    Service              = [module.ecs_service.name]
+    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
   })
 }
 
 resource "aws_ssm_document" "datasync" {
-  count = (local.modules_files_len || local.python_files_len) ? 1 : 0
+  count = (local.modules_files_length || local.python_files_length) ? 1 : 0
 
   name            = "${var.name}-run-datasync"
   document_format = "YAML"
@@ -560,18 +588,19 @@ resource "aws_ssm_document" "ecs_replace_task" {
 # execute the image builder pipeline. W/ this integration the automation is able to trigger 
 # a lambda to execute the pipe to build the desired image.   
 ######################################################################################
-module "lambda" {
-  source = "terraform-aws-modules/lambda/aws"
+module "lambda_image_builder" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "~> 6.0.0"
 
   count = (local.custom_image) ? 1 : 0
 
-  description   = "AWS lambda function that triggers image pipe builder s3 object creation/modification"
-  function_name = "${var.name}-lambda"
-  handler       = "image_builder_exec.lambda_handler"
-  runtime       = "python3.10"
-
-  source_path = "${path.module}/lambdas/image_builder_exec.py"
-
+  description                             = "AWS lambda function that triggers AWS Image Builder Pipeline when an s3 object with prefix requirements.txt is created or modified in ${module.s3_bucket[0].s3_bucket_id}"
+  function_name                           = "${var.name}-lambda"
+  handler                                 = "image_builder_exec.lambda_handler"
+  runtime                                 = "python3.10"
+  create_current_version_allowed_triggers = false
+  source_path                             = "${path.module}/lambdas/image_builder_exec.py"
+  cloudwatch_logs_retention_in_days       = 14
   allowed_triggers = {
     Config = {
       principal  = "s3.amazonaws.com"
@@ -580,7 +609,7 @@ module "lambda" {
   }
   attach_policy_statements = true
   policy_statements = {
-    dynamodb = {
+    imagebuilder = {
       effect    = "Allow",
       actions   = ["imagebuilder:StartImagePipelineExecution"],
       resources = [aws_imagebuilder_image_pipeline.odoo_container[0].arn]

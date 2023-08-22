@@ -5,11 +5,6 @@
       "Effect": "Allow",
       "Action": ["imagebuilder:StartImagePipelineExecution"],
       "Resource": ["${image_pipeline}"]
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["iam:PassRole"],
-      "Resource": ["*"]
     }
   ]
 }
