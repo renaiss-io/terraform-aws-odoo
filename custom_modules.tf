@@ -435,6 +435,8 @@ module "eventbridge_role" {
   ]
 }
 resource "aws_iam_role_policy" "ssm_iam_pass_role" {
+  count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
+
   name = "${var.name}-smm-iam-pass-role"
   role = module.eventbridge_role[0].iam_role_name
 
