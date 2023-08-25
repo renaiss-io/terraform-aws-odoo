@@ -477,7 +477,7 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
 }
 
 resource "aws_cloudwatch_event_rule" "modules_sync" {
-  count = local.modules_files_length ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   depends_on = [aws_iam_role_policy.eventbridge_run_tasks_modules[0]]
 
@@ -492,20 +492,20 @@ resource "aws_cloudwatch_event_rule" "modules_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "modules_sync" {
-  count = local.modules_files_length ? 1 : 0
+  count = (local.modules_files_length) ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.modules_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
-    TaskArn = [aws_datasync_task.sync_modules[0].arn]
+    TaskArn              = [aws_datasync_task.sync_modules[0].arn]
     AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
   })
 }
 
 resource "aws_cloudwatch_event_rule" "python_files_sync" {
-  count = local.python_files_length ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   depends_on = [aws_iam_role_policy.eventbridge_run_tasks_python[0]]
 
@@ -520,14 +520,14 @@ resource "aws_cloudwatch_event_rule" "python_files_sync" {
 }
 
 resource "aws_cloudwatch_event_target" "python_files_sync" {
-  count = local.python_files_length ? 1 : 0
+  count = (local.python_files_length) ? 1 : 0
 
   rule     = aws_cloudwatch_event_rule.python_files_sync[0].name
   arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
   role_arn = module.eventbridge_role[0].iam_role_arn
 
   input = jsonencode({
-    TaskArn = [aws_datasync_task.sync_python_packages[0].arn]
+    TaskArn              = [aws_datasync_task.sync_python_packages[0].arn]
     AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
   })
 }
