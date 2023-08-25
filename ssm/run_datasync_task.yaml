@@ -1,34 +1,35 @@
 ---
 description: Run DataSync Task
 schemaVersion: "0.3"
+assumeRole: "{{ AutomationAssumeRole }}"
 
 parameters:
+  AutomationAssumeRole:
+    type: String
+    description: "(Required) The ARN of the role that allows Automation to perform
+      the actions on your behalf. If no role is specified, Systems Manager Automation
+      uses your IAM permissions to use this runbook."
+    default: ''
+
   TaskArn:
     type: String
     description: "Task to run"
 
 mainSteps:
   - name: runTask
-    action: aws:executeAwsApi
-    onFailure: Abort
+    action: aws:executeScript
     inputs:
-      Service: datasync
-      Api: StartTaskExecution
-      TaskArn: "{{ TaskArn }}"
-    outputs:
-      - Name: taskExecutionArn
-        Selector: "$.TaskExecutionArn"
-        Type: String
-    nextStep: verifyTaskRun
+      Runtime: python3.8
+      Handler: handler
+      InputPayload:
+        TaskArn: "{{ TaskArn }}"
+      Script: |-
+        def handler(events,context):
+          import boto3
+          client = boto3.client('datasync')
 
-  - name: verifyTaskRun
-    action: aws:waitForAwsResourceProperty
-    timeoutSeconds: 3600
-    inputs:
-      Service: datasync
-      Api: DescribeTaskExecution
-      TaskExecutionArn: "{{ runTask.taskExecutionArn }}"
-      PropertySelector: "$.Status"
-      DesiredValues:
-        - SUCCESS
+          TaskArn = events['TaskArn']
+          response = client.start_task_execution(
+              TaskArn=TaskArn
+          )
     isEnd: true

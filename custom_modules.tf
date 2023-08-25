@@ -500,6 +500,7 @@ resource "aws_cloudwatch_event_target" "modules_sync" {
 
   input = jsonencode({
     TaskArn = [aws_datasync_task.sync_modules[0].arn]
+    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
   })
 }
 
@@ -527,6 +528,7 @@ resource "aws_cloudwatch_event_target" "python_files_sync" {
 
   input = jsonencode({
     TaskArn = [aws_datasync_task.sync_python_packages[0].arn]
+    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
   })
 }
 
