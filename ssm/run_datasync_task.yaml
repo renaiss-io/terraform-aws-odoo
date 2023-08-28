@@ -18,6 +18,7 @@ parameters:
 mainSteps:
   - name: runTask
     action: aws:executeScript
+    onFailure: Abort
     inputs:
       Runtime: python3.8
       Handler: handler
@@ -32,11 +33,11 @@ mainSteps:
           response = client.start_task_execution(
               TaskArn=TaskArn
           )
-      outputs:
+          return response
+    outputs:
       - Name: taskExecutionArn
-        Selector: "$.TaskExecutionArn"
+        Selector: "$.Payload.TaskExecutionArn"
         Type: String
-    nextStep: verifyTaskRun
 
   - name: verifyTaskRun
     action: aws:waitForAwsResourceProperty
