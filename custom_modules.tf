@@ -245,7 +245,7 @@ resource "aws_datasync_task" "sync_python_packages" {
 #
 ######################################################################################
 resource "aws_ecr_repository" "odoo" {
-  count = (local.custom_image || local.modules_files_length || local.python_files_length) ? 1 : 0
+  count = (local.custom_image) ? 1 : 0
 
   name                 = var.name
   image_tag_mutability = "MUTABLE"
@@ -599,7 +599,7 @@ module "lambda_image_builder" {
   count = (local.custom_image) ? 1 : 0
 
   description                             = "AWS lambda function that triggers AWS Image Builder Pipeline when an s3 object with prefix requirements.txt is created or modified in ${module.s3_bucket[0].s3_bucket_id}"
-  function_name                           = "${var.name}-lambda"
+  function_name                           = "${var.name}-lambda-aws-image-pipeline-trigger"
   handler                                 = "image_builder_exec.lambda_handler"
   runtime                                 = "python3.10"
   create_current_version_allowed_triggers = false

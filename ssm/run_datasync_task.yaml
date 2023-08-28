@@ -32,4 +32,20 @@ mainSteps:
           response = client.start_task_execution(
               TaskArn=TaskArn
           )
+      outputs:
+      - Name: taskExecutionArn
+        Selector: "$.TaskExecutionArn"
+        Type: String
+    nextStep: verifyTaskRun
+
+  - name: verifyTaskRun
+    action: aws:waitForAwsResourceProperty
+    timeoutSeconds: 3600
+    inputs:
+      Service: datasync
+      Api: DescribeTaskExecution
+      TaskExecutionArn: "{{ runTask.taskExecutionArn }}"
+      PropertySelector: "$.Status"
+      DesiredValues:
+        - SUCCESS
     isEnd: true
