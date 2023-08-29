@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2023-08-10T15:51:11.481Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.5 Chrome/114.0.5735.243 Electron/25.3.1 Safari/537.36" etag="iHLxVBoeMIXhawqF45H3" version="21.6.5" type="device" pages="5">
+<mxfile host="Electron" modified="2023-08-22T19:58:07.760Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="v5Opo3OGJfogu4W8cQ-6" version="21.6.8" type="device" pages="5">
   <diagram id="U59Dpq5jFzxGIKP9aPSB" name="Main">
-    <mxGraphModel dx="2268" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2228" dy="843" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -131,7 +131,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="HMbpreT9DMa_2lmtaCQm" name="S3 sync">
-    <mxGraphModel dx="1418" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1723" dy="1054" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -190,13 +190,13 @@
           <mxGeometry x="782" y="80.005" width="50" height="50" as="geometry" />
         </mxCell>
         <mxCell id="hOg01rG-VIKsdkNoL8NP-2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="40" y="20" width="980" height="340" as="geometry" />
+          <mxGeometry x="20" y="20" width="980" height="340" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="Z_lQ3PYzR4_ykLZQkWyp" name="ECR build">
-    <mxGraphModel dx="1418" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1378" dy="843" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -206,14 +206,13 @@
         <mxCell id="meqZBJgdD75jj23wSmGz-14" value="Terraform deploy" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;imageAspect=0;image=data:image/svg+xml,PHN2ZyB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIDAgMjU2LjAwMDMwNTE3NTc4MTI1IDI5MC45MDk0MjM4MjgxMjUiIGhlaWdodD0iNzk5Ljc1MDk5MzM0MTkyNDQiIHdpZHRoPSI3MDMuNzgwOTA3Njk5NzQyMiI+JiN4YTsgICAgPGc+JiN4YTsgICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTc2LjQ4NTA1NyAxODguOTk0MTYyIDI1Ni4wMDAzMDIgMTQzLjEyNzQ0MiAyNTYuMDAwMzAyIDUxLjI0ODU0NTMgMTc2LjQ4NTA1NyA5Ny4yMTIyMzU4IiBmaWxsPSIjNDA0MEIyIj4mI3hhOyYjeGE7PC9wb2x5Z29uPiYjeGE7ICAgICAgICA8cGF0aCBmaWxsPSIjNUM0RUU1IiBkPSJNODguMjQyNTI4Myw1MS4yNDg1NDUzIEwxNjcuNzU3Nzc0LDk3LjIxMjIzNTggTDE2Ny43NTc3NzQsMTg4Ljk5NDE2MiBMODguMjQyNTI4MywxNDMuMDc4OTU3IE0wLDkxLjgzMDQxMTMgTDc5LjUxNTI0NTMsMTM3Ljc0NTYxNyBMNzkuNTE1MjQ1Myw0NS45MTUyMDU3IEwwLDAgTTg4LjI0MjUyODMsMjQ0Ljk5NDIyOCBMMTY3Ljc1Nzc3NCwyOTAuOTA5NDM0IEwxNjcuNzU3Nzc0LDE5OS4wNzkwMjMgTDg4LjI0MjUyODMsMTUzLjE2MzgxNyI+JiN4YTsmI3hhOzwvcGF0aD4mI3hhOyAgICA8L2c+JiN4YTs8L3N2Zz4=;aspect=fixed;fontStyle=1" parent="1" vertex="1">
           <mxGeometry x="74" y="45" width="50" height="56.81" as="geometry" />
         </mxCell>
-        <mxCell id="meqZBJgdD75jj23wSmGz-15" value="Send events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;verticalAlign=bottom;" parent="1" source="meqZBJgdD75jj23wSmGz-17" target="meqZBJgdD75jj23wSmGz-19" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="meqZBJgdD75jj23wSmGz-15" value="Send events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;verticalAlign=bottom;" parent="1" source="meqZBJgdD75jj23wSmGz-17" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="522" y="73.40499999999997" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="meqZBJgdD75jj23wSmGz-17" value="&lt;b&gt;S3 bucket&lt;br&gt;Odoo custom modules&lt;/b&gt;" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#60A337;gradientDirection=north;fillColor=#277116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" parent="1" vertex="1">
           <mxGeometry x="298" y="48.40499999999997" width="50" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="meqZBJgdD75jj23wSmGz-19" value="&lt;b&gt;AWS EventBridge&lt;br&gt;Trigger events&lt;br&gt;&lt;/b&gt;" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#FF4F8B;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;" parent="1" vertex="1">
-          <mxGeometry x="522" y="48.40499999999997" width="50" height="50" as="geometry" />
         </mxCell>
         <mxCell id="meqZBJgdD75jj23wSmGz-20" value="Execute build" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;verticalAlign=bottom;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="o23BCvdVK9uLTOHfpbd6-1" target="F04bsBLN9xSolKoth-GM-1" edge="1">
           <mxGeometry relative="1" as="geometry">
@@ -227,9 +226,9 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="meqZBJgdD75jj23wSmGz-23" value="Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;verticalAlign=bottom;labelBackgroundColor=none;" parent="1" source="meqZBJgdD75jj23wSmGz-19" target="o23BCvdVK9uLTOHfpbd6-1" edge="1">
+        <mxCell id="meqZBJgdD75jj23wSmGz-23" value="Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;verticalAlign=bottom;labelBackgroundColor=none;" parent="1" target="o23BCvdVK9uLTOHfpbd6-1" edge="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="534" y="73.39999999999998" as="sourcePoint" />
+            <mxPoint x="572" y="73.40499999999997" as="sourcePoint" />
             <mxPoint x="746" y="73.40500000000009" as="targetPoint" />
           </mxGeometry>
         </mxCell>
@@ -276,13 +275,16 @@
           <mxGeometry x="74" y="428.40999999999997" width="50" height="50" as="geometry" />
         </mxCell>
         <mxCell id="603FQKqfEz8f_Zxm3X7t-1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="4" y="5" width="880" height="530" as="geometry" />
+          <mxGeometry x="10" y="10" width="880" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="SmuWvHVNhv9LBcIFXKhK-2" value="AWS Lambda Function" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="521.2" y="50.21" width="51.6" height="51.6" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="Walkcu0ZHGHbaCXh2jjN" name="Network traffic - Default domains">
-    <mxGraphModel dx="3118" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="3078" dy="843" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -352,7 +354,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="dXYdIZUb2FZ8r-M_8JnM" name="Network traffic - Custom domains">
-    <mxGraphModel dx="3118" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="3078" dy="843" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
