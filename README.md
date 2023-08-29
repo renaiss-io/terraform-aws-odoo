@@ -49,6 +49,7 @@ To [manage custom modules](docs/custom_modules_management.md):
 | <a name="module_eventbridge_role"></a> [eventbridge_role](#module_eventbridge_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
 | <a name="module_image_builder_role"></a> [image_builder_role](#module_image_builder_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
 | <a name="module_image_builder_sg"></a> [image_builder_sg](#module_image_builder_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
+| <a name="module_lambda_image_builder"></a> [lambda_image_builder](#module_lambda_image_builder) | terraform-aws-modules/lambda/aws | ~> 6.0.0 |
 | <a name="module_s3_bucket"></a> [s3_bucket](#module_s3_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 3.14 |
 | <a name="module_ses_user"></a> [ses_user](#module_ses_user) | terraform-aws-modules/iam/aws//modules/iam-user | ~> 5.27 |
 | <a name="module_vpc"></a> [vpc](#module_vpc) | terraform-aws-modules/vpc/aws | ~> 5.0 |
