@@ -424,17 +424,17 @@ module "eventbridge_module" {
   trusted_entities = ["events.amazonaws.com", "ssm.amazonaws.com"]
   tags             = var.tags
 
-  rules = {
-    modules_sync = {
+  rules = merge(
+    (local.modules_files_length) ? { modules_sync = {
       description = "Sync modules files stored in s3"
 
       event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
         bucket = module.s3_bucket[0].s3_bucket_id
         prefix = "modules/"
       })
-    },
+    } } : {},
 
-    python_files_sync = {
+    (local.python_files_length) ? { python_files_sync = {
       name        = "${var.name}-python-files-sync"
       description = "Sync python files stored in s3"
 
@@ -442,9 +442,9 @@ module "eventbridge_module" {
         bucket = module.s3_bucket[0].s3_bucket_id
         prefix = "python/"
       })
-    } ,
+    } } : {},
 
-    ecr_push = {
+    (local.custom_image) ? { ecr_push = {
       name        = "${var.name}-ecr-push"
       description = "Replace ECS task on ECR image push"
 
@@ -452,11 +452,12 @@ module "eventbridge_module" {
         repository = aws_ecr_repository.odoo[0].id
         tag        = "latest"
       })
-    }
-  }
+    } } : {}
 
-  targets = {
-    modules_sync = [
+  )
+
+  targets = merge(
+    (local.modules_files_length) ? { modules_sync = [
       {
         name            = "${var.name}-modules-sync"
         arn             = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
@@ -467,9 +468,9 @@ module "eventbridge_module" {
           AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
         })
       }
-    ] ,
+    ], } : {},
 
-    python_files_sync = [
+    (local.python_files_length) ? { modules_sync = [
       {
 
         name            = "${var.name}-python-files-sync"
@@ -481,9 +482,9 @@ module "eventbridge_module" {
           AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
         })
       }
-    ],
+    ] } : {},
 
-    ecr_push = [
+    (local.custom_image) ? { ecr_push = [
       {
         name            = "${var.name}-ecr-push"
         arn             = "${replace(aws_ssm_document.ecs_replace_task[0].arn, "document", "automation-definition")}:$DEFAULT"
@@ -493,10 +494,8 @@ module "eventbridge_module" {
           Cluster              = [module.ecs_cluster.cluster_name]
           Service              = [module.ecs_service.name]
           AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
-      }) }
-    ]
-  }
-
+    }) }] } : {}
+  )
   policies = ["arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"]
 
 }
