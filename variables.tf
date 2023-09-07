@@ -22,12 +22,6 @@ variable "vpc_cidr" {
   description = "IP range to assign to VPC"
 }
 
-variable "deploy_nat" { // TODO: implement logic to use nat in private subnets
-  default     = false
-  type        = bool
-  description = "Deploy NAT for private subnets"
-}
-
 ######################################################################################
 # DB
 ######################################################################################
@@ -112,22 +106,4 @@ variable "odoo_db_name" {
   default     = "odoo"
   type        = string
   description = "Main odoo DB name"
-}
-
-variable "odoo_custom_modules_paths" {
-  default     = []
-  type        = list(string)
-  description = "Paths containing custom modules to install"
-}
-
-variable "odoo_python_libraries_paths" {
-  default     = []
-  type        = list(string)
-  description = "Paths containing python libraries to install"
-}
-
-variable "extra_files_filter" {
-  default     = [".git"]
-  type        = list(string)
-  description = "Paths containing python libraries to install"
 }
