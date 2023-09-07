@@ -22,12 +22,6 @@ variable "vpc_cidr" {
   description = "IP range to assign to VPC"
 }
 
-variable "deploy_nat" { // TODO: implement logic to use nat in private subnets
-  default     = false
-  type        = bool
-  description = "Deploy NAT for private subnets"
-}
-
 ######################################################################################
 # DB
 ######################################################################################

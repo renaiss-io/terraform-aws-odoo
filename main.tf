@@ -283,9 +283,9 @@ module "alb" {
 # For caching and origin request policies, AWS managed policies are queried and used.
 #
 ######################################################################################
-data "aws_cloudfront_cache_policy" "CachingDisabled" { name = "Managed-CachingDisabled" }
-data "aws_cloudfront_cache_policy" "CachingOptimized" { name = "Managed-CachingOptimized" }
-data "aws_cloudfront_origin_request_policy" "AllViewer" { name = "Managed-AllViewer" }
+data "aws_cloudfront_cache_policy" "caching_disabled" { name = "Managed-CachingDisabled" }
+data "aws_cloudfront_cache_policy" "caching_optimized" { name = "Managed-CachingOptimized" }
+data "aws_cloudfront_origin_request_policy" "all_viewer" { name = "Managed-AllViewer" }
 
 module "cdn" {
   source  = "terraform-aws-modules/cloudfront/aws"
@@ -327,8 +327,8 @@ module "cdn" {
     target_origin_id         = var.name
     viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cache_policy_id          = data.aws_cloudfront_cache_policy.CachingDisabled.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.AllViewer.id
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
     use_forwarded_values     = false
   }
 
@@ -339,8 +339,8 @@ module "cdn" {
       viewer_protocol_policy   = "redirect-to-https"
       allowed_methods          = ["GET", "HEAD", "OPTIONS"]
       cached_methods           = ["GET", "HEAD"]
-      cache_policy_id          = data.aws_cloudfront_cache_policy.CachingOptimized.id
-      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.AllViewer.id
+      cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
       use_forwarded_values     = false
     }
   ]
