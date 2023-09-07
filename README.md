@@ -147,7 +147,6 @@ module "odoo_custom_modules" {
 | <a name="input_db_max_size"></a> [db_max_size](#input_db_max_size) | Max size of DB (var.db_size will be allocated and autoscale will be enabled) | `number` | `100` | no |
 | <a name="input_db_root_username"></a> [db_root_username](#input_db_root_username) | DB root username | `string` | `"odoo"` | no |
 | <a name="input_db_size"></a> [db_size](#input_db_size) | DB size (in GB) | `number` | `20` | no |
-| <a name="input_deploy_nat"></a> [deploy_nat](#input_deploy_nat) | Deploy NAT for private subnets | `bool` | `false` | no |
 | <a name="input_ecs_container_insights"></a> [ecs_container_insights](#input_ecs_container_insights) | Enable container ingsights in ECS (not inside free tier) | `bool` | `false` | no |
 | <a name="input_ecs_instance_type"></a> [ecs_instance_type](#input_ecs_instance_type) | Instance type for ECS instances | `string` | `"t3.micro"` | no |
 | <a name="input_ecs_task_memory"></a> [ecs_task_memory](#input_ecs_task_memory) | Memory to allocate for the task (in GB) | `number` | `400` | no |
