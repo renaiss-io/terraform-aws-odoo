@@ -581,6 +581,11 @@ module "ecs_service" {
     aws_secretsmanager_secret.odoo_root_user.arn,
   ]
 
+        entry_point = merge(
+        ["/opt/bitnami/scripts/odoo/run.sh", "-D", "FOREGROUND"],
+        (var.no_database_list) ? null : ["--no-database-list", "true"],
+        length(var.init_modules) > 0 ?  merge(["--init"] , var.init_modules) : null,
+        length(var.load_language) > 0 ? merge(["--load-language","true"], var.load_language) : null)
   capacity_provider_strategy = {
     provider = {
       capacity_provider = module.ecs_cluster.autoscaling_capacity_providers[var.name].name
@@ -625,7 +630,6 @@ module "ecs_service" {
           containerPath = local.filestore_path
         },
       ]
-
       environment = [
         # Root user
         { "name" : "ODOO_EMAIL", "value" : var.odoo_root_email },
