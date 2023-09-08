@@ -411,7 +411,7 @@ resource "aws_imagebuilder_image_pipeline" "odoo_container" {
 # ECS must be redeployed.
 #
 ######################################################################################
-module "eventbridge_module" {
+module "eventbridge" {
   source  = "terraform-aws-modules/eventbridge/aws"
   version = "~> 2.3.0"
 
@@ -419,9 +419,9 @@ module "eventbridge_module" {
 
   role_name        = "${var.name}-eventbridge"
   role_description = "IAM role for ${var.name} eventbridge"
-  create_bus       = false
-  create_role      = true
+  create_bus       = "${var.name}-bus"
   trusted_entities = ["events.amazonaws.com", "ssm.amazonaws.com"]
+  policies         = ["arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"]
   tags             = var.tags
 
   rules = merge(
@@ -465,7 +465,7 @@ module "eventbridge_module" {
 
         input = jsonencode({
           TaskArn              = [aws_datasync_task.sync_modules[0].arn]
-          AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
         })
       }
     ] } : {},
@@ -479,7 +479,7 @@ module "eventbridge_module" {
 
         input = jsonencode({
           TaskArn              = [aws_datasync_task.sync_python_packages[0].arn]
-          AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
         })
       }
     ] } : {},
@@ -493,21 +493,19 @@ module "eventbridge_module" {
         input = jsonencode({
           Cluster              = [module.ecs_cluster.cluster_name]
           Service              = [module.ecs_service.name]
-          AutomationAssumeRole = [module.eventbridge_module[0].eventbridge_role_arn]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
     }) }] } : {}
   )
-  policies = ["arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"]
-
 }
 
 resource "aws_iam_role_policy" "ssm_iam_pass_role" {
   count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
 
   name = "${var.name}-smm-iam-pass-role"
-  role = module.eventbridge_module[0].eventbridge_role_name
+  role = module.eventbridge[0].eventbridge_role_name
 
   policy = templatefile("${path.module}/iam/iam_pass_role.json", {
-    arn = module.eventbridge_module[0].eventbridge_role_arn
+    arn = module.eventbridge[0].eventbridge_role_arn
   })
 }
 
@@ -515,7 +513,7 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
   count = (local.python_files_length) ? 1 : 0
 
   name = "${var.name}-eventbridge-run-task-python"
-  role = module.eventbridge_module[0].eventbridge_role_name
+  role = module.eventbridge[0].eventbridge_role_name
 
   policy = templatefile("${path.module}/iam/run_datasync.json", {
     tasks = [aws_datasync_task.sync_python_packages[0].arn]
@@ -526,7 +524,7 @@ resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
   count = (local.modules_files_length) ? 1 : 0
 
   name = "${var.name}-eventbridge-run-task-modules"
-  role = module.eventbridge_module[0].eventbridge_role_name
+  role = module.eventbridge[0].eventbridge_role_name
 
   policy = templatefile("${path.module}/iam/run_datasync.json", {
     tasks = [aws_datasync_task.sync_modules[0].arn]
@@ -537,7 +535,7 @@ resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
   count = (local.custom_image) ? 1 : 0
 
   name = "${var.name}-eventbridge-update-ecs-service"
-  role = module.eventbridge_module[0].eventbridge_role_name
+  role = module.eventbridge[0].eventbridge_role_name
 
   policy = templatefile("${path.module}/iam/ecs_update_service.json", {
     service = module.ecs_service.id
