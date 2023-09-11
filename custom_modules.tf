@@ -496,52 +496,26 @@ module "eventbridge" {
           AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
     }) }] } : {}
   )
+
+  attach_policy_jsons = true
+  policy_jsons = [merge(
+    templatefile("${path.module}/iam/iam_pass_role.json", {
+      arn = module.eventbridge[0].eventbridge_role_arn
+    }),
+    (local.python_files_length) ? templatefile("${path.module}/iam/run_datasync.json", {
+      tasks = [aws_datasync_task.sync_python_packages[0].arn]
+    }) : null,
+
+    (local.modules_files_length) ? templatefile("${path.module}/iam/run_datasync.json", {
+      tasks = [aws_datasync_task.sync_modules[0].arn]
+    }) : null,
+
+    (local.custom_image) ? templatefile("${path.module}/iam/ecs_update_service.json", {
+      service = module.ecs_service.id
+    }) : null)
+  ]
+
 }
-
-resource "aws_iam_role_policy" "ssm_iam_pass_role" {
-  count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
-
-  name = "${var.name}-smm-iam-pass-role"
-  role = module.eventbridge[0].eventbridge_role_name
-
-  policy = templatefile("${path.module}/iam/iam_pass_role.json", {
-    arn = module.eventbridge[0].eventbridge_role_arn
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
-  count = (local.python_files_length) ? 1 : 0
-
-  name = "${var.name}-eventbridge-run-task-python"
-  role = module.eventbridge[0].eventbridge_role_name
-
-  policy = templatefile("${path.module}/iam/run_datasync.json", {
-    tasks = [aws_datasync_task.sync_python_packages[0].arn]
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
-  count = (local.modules_files_length) ? 1 : 0
-
-  name = "${var.name}-eventbridge-run-task-modules"
-  role = module.eventbridge[0].eventbridge_role_name
-
-  policy = templatefile("${path.module}/iam/run_datasync.json", {
-    tasks = [aws_datasync_task.sync_modules[0].arn]
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
-  count = (local.custom_image) ? 1 : 0
-
-  name = "${var.name}-eventbridge-update-ecs-service"
-  role = module.eventbridge[0].eventbridge_role_name
-
-  policy = templatefile("${path.module}/iam/ecs_update_service.json", {
-    service = module.ecs_service.id
-  })
-}
-
 resource "aws_ssm_document" "datasync" {
   count = (local.modules_files_length || local.python_files_length) ? 1 : 0
 
