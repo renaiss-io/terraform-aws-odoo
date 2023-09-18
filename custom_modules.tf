@@ -419,7 +419,8 @@ module "eventbridge" {
 
   role_name        = "${var.name}-eventbridge"
   role_description = "IAM role for ${var.name} eventbridge"
-  create_bus       = "${var.name}-bus"
+  create_bus       = true
+  bus_name         = "${var.name}-bus"
   trusted_entities = ["events.amazonaws.com", "ssm.amazonaws.com"]
   policies         = ["arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"]
   tags             = var.tags
@@ -498,7 +499,7 @@ module "eventbridge" {
   )
 
   attach_policy_jsons = true
-  policy_jsons = [merge(
+  policy_jsons = flatten([
     templatefile("${path.module}/iam/iam_pass_role.json", {
       arn = module.eventbridge[0].eventbridge_role_arn
     }),
@@ -512,8 +513,7 @@ module "eventbridge" {
 
     (local.custom_image) ? templatefile("${path.module}/iam/ecs_update_service.json", {
       service = module.ecs_service.id
-    }) : null)
-  ]
+  }) : null])
 
 }
 resource "aws_ssm_document" "datasync" {
