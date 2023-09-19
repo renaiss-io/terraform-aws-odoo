@@ -45,8 +45,6 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
 resource "aws_s3_object" "module_files" {
   depends_on = [
-    aws_cloudwatch_event_target.modules_sync[0],
-    aws_cloudwatch_event_rule.modules_sync[0],
     aws_s3_bucket_notification.bucket_notification[0]
   ]
 
@@ -61,8 +59,6 @@ resource "aws_s3_object" "module_files" {
 
 resource "aws_s3_object" "python_dependencies" {
   depends_on = [
-    aws_cloudwatch_event_target.python_files_sync[0],
-    aws_cloudwatch_event_rule.python_files_sync[0],
     aws_s3_bucket_notification.bucket_notification[0]
   ]
   for_each = local.python_files
@@ -415,152 +411,111 @@ resource "aws_imagebuilder_image_pipeline" "odoo_container" {
 # ECS must be redeployed.
 #
 ######################################################################################
-module "eventbridge_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
-  version = "~> 5.27"
+module "eventbridge" {
+  source  = "terraform-aws-modules/eventbridge/aws"
+  version = "~> 2.3.0"
 
   count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
 
-  role_name               = "${var.name}-eventbridge"
-  role_description        = "IAM role for ${var.name} eventbridge"
-  create_role             = true
-  create_instance_profile = false
-  role_requires_mfa       = false
-  trusted_role_services   = ["events.amazonaws.com", "ssm.amazonaws.com"]
-  trusted_role_actions    = ["sts:AssumeRole"]
-  tags                    = var.tags
+  role_name        = "${var.name}-eventbridge"
+  role_description = "IAM role for ${var.name} eventbridge"
+  create_bus       = true
+  bus_name         = "${var.name}-bus"
+  trusted_entities = ["events.amazonaws.com", "ssm.amazonaws.com"]
+  policies         = ["arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"]
+  tags             = var.tags
 
-  custom_role_policy_arns = [
-    "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
-  ]
+  rules = merge(
+    (local.modules_files_length) ? { modules_sync = {
+      description = "Sync modules files stored in s3"
+
+      event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
+        bucket = module.s3_bucket[0].s3_bucket_id
+        prefix = "modules/"
+      })
+    } } : {},
+
+    (local.python_files_length) ? { python_files_sync = {
+      name        = "${var.name}-python-files-sync"
+      description = "Sync python files stored in s3"
+
+      event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
+        bucket = module.s3_bucket[0].s3_bucket_id
+        prefix = "python/"
+      })
+    } } : {},
+
+    (local.custom_image) ? { ecr_push = {
+      name        = "${var.name}-ecr-push"
+      description = "Replace ECS task on ECR image push"
+
+      event_pattern = templatefile("${path.module}/eventbridge/ecr_image_push.json", {
+        repository = aws_ecr_repository.odoo[0].id
+        tag        = "latest"
+      })
+    } } : {}
+
+  )
+
+  targets = merge(
+    (local.modules_files_length) ? { modules_sync = [
+      {
+        name            = "${var.name}-modules-sync"
+        arn             = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
+        attach_role_arn = true
+
+        input = jsonencode({
+          TaskArn              = [aws_datasync_task.sync_modules[0].arn]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
+        })
+      }
+    ] } : {},
+
+    (local.python_files_length) ? { python_files_sync = [
+      {
+
+        name            = "${var.name}-python-files-sync"
+        arn             = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
+        attach_role_arn = true
+
+        input = jsonencode({
+          TaskArn              = [aws_datasync_task.sync_python_packages[0].arn]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
+        })
+      }
+    ] } : {},
+
+    (local.custom_image) ? { ecr_push = [
+      {
+        name            = "${var.name}-ecr-push"
+        arn             = "${replace(aws_ssm_document.ecs_replace_task[0].arn, "document", "automation-definition")}:$DEFAULT"
+        attach_role_arn = true
+
+        input = jsonencode({
+          Cluster              = [module.ecs_cluster.cluster_name]
+          Service              = [module.ecs_service.name]
+          AutomationAssumeRole = [module.eventbridge[0].eventbridge_role_arn]
+    }) }] } : {}
+  )
+
+  attach_policy_jsons = true
+  policy_jsons = flatten([
+    templatefile("${path.module}/iam/iam_pass_role.json", {
+      arn = module.eventbridge[0].eventbridge_role_arn
+    }),
+    (local.python_files_length) ? templatefile("${path.module}/iam/run_datasync.json", {
+      tasks = [aws_datasync_task.sync_python_packages[0].arn]
+    }) : null,
+
+    (local.modules_files_length) ? templatefile("${path.module}/iam/run_datasync.json", {
+      tasks = [aws_datasync_task.sync_modules[0].arn]
+    }) : null,
+
+    (local.custom_image) ? templatefile("${path.module}/iam/ecs_update_service.json", {
+      service = module.ecs_service.id
+  }) : null])
+
 }
-resource "aws_iam_role_policy" "ssm_iam_pass_role" {
-  count = (local.python_files_length || local.modules_files_length || local.custom_image) ? 1 : 0
-
-  name = "${var.name}-smm-iam-pass-role"
-  role = module.eventbridge_role[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/iam_pass_role.json", {
-    arn = module.eventbridge_role[0].iam_role_arn
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_run_tasks_python" {
-  count = (local.python_files_length) ? 1 : 0
-
-  name = "${var.name}-eventbridge-run-task-python"
-  role = module.eventbridge_role[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/run_datasync.json", {
-    tasks = [aws_datasync_task.sync_python_packages[0].arn]
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_run_tasks_modules" {
-  count = (local.modules_files_length) ? 1 : 0
-
-  name = "${var.name}-eventbridge-run-task-modules"
-  role = module.eventbridge_role[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/run_datasync.json", {
-    tasks = [aws_datasync_task.sync_modules[0].arn]
-  })
-}
-
-resource "aws_iam_role_policy" "eventbridge_update_ecs_service" {
-  count = (local.custom_image) ? 1 : 0
-
-  name = "${var.name}-eventbridge-update-ecs-service"
-  role = module.eventbridge_role[0].iam_role_name
-
-  policy = templatefile("${path.module}/iam/ecs_update_service.json", {
-    service = module.ecs_service.id
-  })
-}
-
-resource "aws_cloudwatch_event_rule" "modules_sync" {
-  count = (local.modules_files_length) ? 1 : 0
-
-  depends_on = [aws_iam_role_policy.eventbridge_run_tasks_modules[0]]
-
-  name        = "${var.name}-modules-sync"
-  description = "Sync modules files stored in s3"
-  tags        = var.tags
-
-  event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
-    bucket = module.s3_bucket[0].s3_bucket_id
-    prefix = "modules/"
-  })
-}
-
-resource "aws_cloudwatch_event_target" "modules_sync" {
-  count = (local.modules_files_length) ? 1 : 0
-
-  rule     = aws_cloudwatch_event_rule.modules_sync[0].name
-  arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role[0].iam_role_arn
-
-  input = jsonencode({
-    TaskArn              = [aws_datasync_task.sync_modules[0].arn]
-    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
-  })
-}
-
-resource "aws_cloudwatch_event_rule" "python_files_sync" {
-  count = (local.python_files_length) ? 1 : 0
-
-  depends_on = [aws_iam_role_policy.eventbridge_run_tasks_python[0]]
-
-  name        = "${var.name}-python-files-sync"
-  description = "Sync python files stored in s3"
-  tags        = var.tags
-
-  event_pattern = templatefile("${path.module}/eventbridge/s3_object_prefix_rule.json", {
-    bucket = module.s3_bucket[0].s3_bucket_id
-    prefix = "python/"
-  })
-}
-
-resource "aws_cloudwatch_event_target" "python_files_sync" {
-  count = (local.python_files_length) ? 1 : 0
-
-  rule     = aws_cloudwatch_event_rule.python_files_sync[0].name
-  arn      = "${replace(aws_ssm_document.datasync[0].arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role[0].iam_role_arn
-
-  input = jsonencode({
-    TaskArn              = [aws_datasync_task.sync_python_packages[0].arn]
-    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
-  })
-}
-
-resource "aws_cloudwatch_event_rule" "ecr_push" {
-  count = (local.custom_image) ? 1 : 0
-
-  name        = "${var.name}-ecr-push"
-  description = "Replace ECS task on ECR image push"
-  tags        = var.tags
-
-  event_pattern = templatefile("${path.module}/eventbridge/ecr_image_push.json", {
-    repository = aws_ecr_repository.odoo[0].id
-    tag        = "latest"
-  })
-}
-
-resource "aws_cloudwatch_event_target" "ecr_push" {
-  count = (local.custom_image) ? 1 : 0
-
-  rule     = aws_cloudwatch_event_rule.ecr_push[0].name
-  arn      = "${replace(aws_ssm_document.ecs_replace_task[0].arn, "document", "automation-definition")}:$DEFAULT"
-  role_arn = module.eventbridge_role[0].iam_role_arn
-
-  input = jsonencode({
-    Cluster              = [module.ecs_cluster.cluster_name]
-    Service              = [module.ecs_service.name]
-    AutomationAssumeRole = [module.eventbridge_role[0].iam_role_arn]
-  })
-}
-
 resource "aws_ssm_document" "datasync" {
   count = (local.modules_files_length || local.python_files_length) ? 1 : 0
 
@@ -601,7 +556,7 @@ module "lambda_image_builder" {
   source_path                       = "${path.module}/lambdas/trigger_image_builder.py"
   cloudwatch_logs_retention_in_days = 14
   attach_policy_statements          = true
-
+  create_current_version_allowed_triggers = false
   allowed_triggers = {
     s3 = {
       principal  = "s3.amazonaws.com"
