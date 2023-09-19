@@ -628,9 +628,9 @@ module "ecs_service" {
 
       command = concat(
         ["/opt/bitnami/scripts/odoo/run.sh"],
-        (var.no_database_list) ? ["--no-database-list"] : [] ,
-        length(var.init_modules) > 0 ? concat(["--init"] , join(",", var.init_modules)) : [],
-      length(var.load_language) > 0 ? concat(["--load-language"] , join(",",var.load_language)) : [])
+        (var.no_database_list) ? ["--no-database-list"] : [],
+        length(var.init_modules) > 0 ? concat(["--init"], [join(",", var.init_modules)]) : [],
+      length(var.load_language) > 0 ? concat(["--load-language"], [join(",", var.load_language)]) : [])
 
       environment = [
         # Root user
