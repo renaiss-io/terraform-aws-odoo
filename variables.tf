@@ -70,6 +70,23 @@ variable "ecs_container_insights" {
   description = "Enable container ingsights in ECS (not inside free tier)"
 }
 
+variable "no_database_list" {
+  default     = true
+  type        = bool
+  description = "Enable/Disable exposing DB management capabilities in the login page"
+}
+
+variable "load_language" {
+  default     = []
+  type        = list(string)
+  description = "Allow automatic installation of a language. List of languages available at https://github.com/odoo/odoo/blob/16.0/odoo/tools/translate.py"
+}
+
+variable "init_modules" {
+  default     = []
+  type        = list(string)
+  description = "Initialize some modules upon deployment success"
+}
 ######################################################################################
 # DOMAIN
 ######################################################################################
