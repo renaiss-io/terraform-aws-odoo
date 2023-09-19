@@ -133,13 +133,13 @@ variable "no_database_list" {
 }
 
 variable "load_language" {
-  default     = []
+  default     = ["es_AR"]
   type        = list(string)
   description = "Allow automatic installation of a language. List of languages available at https://github.com/odoo/odoo/blob/16.0/odoo/tools/translate.py"
 }
 
 variable "init_modules" {
-  default     = []
+  default     = ["mail"]
   type        = list(string)
   description = "Initialize some modules upon deployment success"
 }
