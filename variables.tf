@@ -77,7 +77,7 @@ variable "ecs_container_insights" {
 }
 
 variable "no_database_list" {
-  default     = false
+  default     = true
   type        = bool
   description = "Enable/Disable exposing DB management capabilities in the login page"
 }
