@@ -1,0 +1,1 @@
+*Files in the root of the custom modules paths are ignored*

@@ -41,3 +41,6 @@ provider.tf
 # Draw io tmp files
 *.xml.bkp
 *.xml.dtmp
+
+# Lambda module
+builds/

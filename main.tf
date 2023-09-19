@@ -23,8 +23,8 @@ module "vpc" {
 
   azs              = local.azs
   public_subnets   = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k)]
-  private_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 2)]
-  database_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 4)]
+  private_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 3)]
+  database_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 6)]
 
   create_database_subnet_group      = true
   create_database_nat_gateway_route = false
@@ -40,9 +40,7 @@ module "vpc" {
 # An RDS database based in Postgres engine (v14) is used as Odoo requires this engine:
 # https://www.odoo.com/documentation/16.0/administration/install/install.html#postgresql
 #
-# AWS allows the master password to be fully managed and rotated, but the official
-# terraform module for RDS does not support the 'secrets' output of the RDS database,
-# so this code queries the managed AWS Secret after RDS is created. The secret is used
+# AWS allows the master password to be fully managed and rotated. The secret is used
 # to set the master password as an environment variable in the Odoo ECS task.
 #
 # The security group of the DB only allows traffic in the DB port from the EC2
@@ -53,25 +51,30 @@ module "db" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 6.1"
 
-  identifier                     = var.name
+  identifier = var.name
+  db_name    = var.odoo_db_name
+  username   = var.db_root_username
+  tags       = var.tags
+
   instance_use_identifier_prefix = false
   create_db_option_group         = false
   create_db_parameter_group      = false
-  engine                         = "postgres"
-  family                         = "postgres14"
-  db_name                        = var.odoo_db_name
-  engine_version                 = "14"
-  major_engine_version           = "14"
-  instance_class                 = var.db_instance_type
-  allocated_storage              = var.db_size
-  username                       = "odoo"
-  port                           = local.db_port
-  db_subnet_group_name           = module.vpc.database_subnet_group
-  vpc_security_group_ids         = [module.db_security_group.security_group_id]
-  maintenance_window             = "Mon:00:00-Mon:03:00"
-  backup_window                  = "03:00-06:00"
-  backup_retention_period        = 0
-  tags                           = var.tags
+
+  engine         = "postgres"
+  engine_version = "14"
+
+  instance_class        = var.db_instance_type
+  allocated_storage     = var.db_size
+  max_allocated_storage = var.db_max_size
+
+  port                   = local.db_port
+  db_subnet_group_name   = module.vpc.database_subnet_group
+  vpc_security_group_ids = [module.db_security_group.security_group_id]
+
+  skip_final_snapshot     = true
+  backup_window           = "03:00-06:00"
+  backup_retention_period = 1
+  copy_tags_to_snapshot   = true
 }
 
 module "db_security_group" {
@@ -113,7 +116,7 @@ module "db_security_group" {
 # requires the host to be the custom domain anyways, which is what we need at an app
 # layer, so this does not represent a threat (though it is preferred encrypt traffic).
 #
-# The traffic behind the load balancer is over HTTP in port 80, SSL is managed at
+# The traffic behind the load balancer is over HTTP in port 8069, SSL is managed at
 # ALB/CDN layer.
 #
 ######################################################################################
@@ -163,32 +166,29 @@ module "alb" {
     }
   ]
 
-  http_tcp_listeners = local.custom_domain ? [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+  http_tcp_listeners = local.custom_domain ? [{
+    port        = 80
+    protocol    = "HTTP"
+    action_type = "redirect"
 
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
+    redirect = {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = local.cloudfront_custom_domain
     }
-    ] : [
-    {
-      port        = 80
-      protocol    = "HTTP"
-      action_type = "redirect"
+    }] : [{
+    port        = 80
+    protocol    = "HTTP"
+    action_type = "redirect"
 
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-        host        = module.cdn.cloudfront_distribution_domain_name
-      }
+    redirect = {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = module.cdn.cloudfront_distribution_domain_name
     }
-  ]
+  }]
 
   http_tcp_listener_rules = local.custom_domain ? [] : [{
     http_tcp_listener_index = 0
@@ -375,8 +375,9 @@ module "autoscaling" {
   tags                            = var.tags
 
   create_iam_instance_profile = true
-  iam_role_name               = "${var.name}-ecs"
-  iam_role_description        = "ECS role for ${var.name}"
+  iam_role_name               = "${var.name}-ec2"
+  iam_role_use_name_prefix    = false
+  iam_role_description        = "IAM role for ${var.name} EC2 instances"
   vpc_zone_identifier         = module.vpc.public_subnets
   health_check_type           = "EC2"
   min_size                    = 1
@@ -462,6 +463,30 @@ module "efs" {
         }
       }
     }
+
+    python_packages = {
+      root_directory = {
+        path = local.python_extra_packages
+
+        creation_info = {
+          owner_gid   = 1001
+          owner_uid   = 1001
+          permissions = "777"
+        }
+      }
+    }
+
+    addons = {
+      root_directory = {
+        path = local.addons_dir
+
+        creation_info = {
+          owner_gid   = 1001
+          owner_uid   = 1001
+          permissions = "777"
+        }
+      }
+    }
   }
 }
 
@@ -500,6 +525,11 @@ module "ecs_cluster" {
   tags                                  = var.tags
   default_capacity_provider_use_fargate = false
 
+  cluster_settings = {
+    name  = "containerInsights"
+    value = var.ecs_container_insights ? "enabled" : "disabled"
+  }
+
   autoscaling_capacity_providers = {
     (var.name) = {
       auto_scaling_group_arn         = module.autoscaling.autoscaling_group_arn
@@ -524,13 +554,32 @@ module "ecs_service" {
   source  = "terraform-aws-modules/ecs/aws//modules/service"
   version = "~> 5.2"
 
-  name                     = var.name
-  cluster_arn              = module.ecs_cluster.cluster_arn
-  subnet_ids               = module.vpc.private_subnets
-  memory                   = var.ecs_task_memory
-  requires_compatibilities = ["EC2"]
-  network_mode             = "host"
-  tags                     = var.tags
+  name                               = var.name
+  cluster_arn                        = module.ecs_cluster.cluster_arn
+  subnet_ids                         = module.vpc.private_subnets
+  memory                             = var.ecs_task_memory
+  launch_type                        = "EC2"
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+  force_new_deployment               = false
+  requires_compatibilities           = ["EC2"]
+  network_mode                       = "host"
+  tags                               = var.tags
+
+  iam_role_name                      = "${var.name}-ecs-cluster"
+  iam_role_use_name_prefix           = false
+  iam_role_description               = "IAM role for ${var.name} ECS cluster"
+  task_exec_iam_role_name            = "${var.name}-ecs-task-execution"
+  task_exec_iam_role_use_name_prefix = false
+  task_exec_iam_role_description     = "IAM role for ${var.name} ECS execution"
+  task_exec_ssm_param_arns           = []
+  create_tasks_iam_role              = false
+
+  task_exec_secret_arns = [
+    module.db.db_instance_master_user_secret_arn,
+    aws_secretsmanager_secret.odoo_ses_user.arn,
+    aws_secretsmanager_secret.odoo_root_user.arn,
+  ]
 
   capacity_provider_strategy = {
     provider = {
@@ -557,7 +606,7 @@ module "ecs_service" {
 
   container_definitions = {
     (var.name) = {
-      image                    = "${var.odoo_docker_image}:${var.odoo_version}"
+      image                    = local.custom_image ? "${aws_ecr_repository.odoo[0].repository_url}:latest" : "${var.odoo_docker_image}:${var.odoo_version}"
       readonly_root_filesystem = false
 
       port_mappings = [{
@@ -577,11 +626,17 @@ module "ecs_service" {
         },
       ]
 
+      command = concat(
+        ["/opt/bitnami/scripts/odoo/run.sh"],
+        (var.no_database_list) ? ["--no-database-list"] : [],
+        length(var.init_modules) > 0 ? concat(["--init"], [join(",", var.init_modules)]) : [],
+      length(var.load_language) > 0 ? concat(["--load-language"], [join(",", var.load_language)]) : [])
+
       environment = [
         # Root user
         { "name" : "ODOO_EMAIL", "value" : var.odoo_root_email },
         # Python path
-        { "name" : "PYTHONPATH", "value" : "/opt/python/site-packages" },
+        { "name" : "PYTHONPATH", "value" : local.python_extra_packages },
         # DB parameters
         { "name" : "ODOO_DATABASE_HOST", "value" : module.db.db_instance_address },
         { "name" : "ODOO_DATABASE_PORT_NUMBER", "value" : module.db.db_instance_port },
@@ -690,6 +745,7 @@ module "acm" {
   wait_for_validation       = true
   subject_alternative_names = ["*.${local.cloudfront_custom_domain}"]
 }
+
 
 ######################################################################################
 # SES

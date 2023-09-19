@@ -1,0 +1,12 @@
+{
+  "source": ["aws.s3"],
+  "detail-type": ["Object Created"],
+  "detail": {
+    "bucket": {
+      "name": ["${bucket}"]
+    },
+    "object": {
+      "key": ["${object}"]
+    }
+  }
+}

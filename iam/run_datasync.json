@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "datasync:StartTaskExecution",
+      "Resource": ${jsonencode(tasks)}
+    },
+    {
+        "Effect": "Allow",
+        "Action": "datasync:DescribeTaskExecution",
+        "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:DescribeNetworkInterfaces", "ec2:CreateNetworkInterface"],
+      "Resource": "*"
+    }
+  ]
+}

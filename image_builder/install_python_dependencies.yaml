@@ -1,0 +1,28 @@
+name: InstallPythonDependencies
+description: This component install extra dependencies required by Odoo.
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: downloadRequirementsFromS3
+        action: S3Download
+        inputs:
+          - source: "s3://${source}"
+            destination: /tmp/requirements.txt
+
+      - name: installPrerequisites
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              apt update
+              apt install -y git
+
+      - name: installDependencies
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              source /opt/bitnami/odoo/venv/bin/activate
+              pip install -r /tmp/requirements.txt

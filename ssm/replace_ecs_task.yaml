@@ -1,0 +1,44 @@
+---
+description: Replace ECS Service Task
+schemaVersion: "0.3"
+assumeRole: "{{ AutomationAssumeRole }}"
+
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: "(Required) The ARN of the role that allows Automation to perform
+      the actions on your behalf. If no role is specified, Systems Manager Automation
+      uses your IAM permissions to use this runbook."
+    default: ''
+    
+  Cluster:
+    type: String
+    description: "ECS cluster to update"
+
+  Service:
+    type: String
+    description: "ECS service to update"
+
+mainSteps:
+  - name: replaceEcsTask
+    action: aws:executeScript
+    inputs:
+      Runtime: python3.8
+      Handler: handler
+      InputPayload:
+        cluster: "{{ Cluster }}"
+        service: "{{ Service }}"
+      Script: |-
+        def handler(events,context):
+          import boto3
+          ecs = boto3.client('ecs')
+
+          cluster = events['cluster']
+          service = events['service']
+
+          ecs.update_service(
+              cluster=cluster,
+              service=service,
+              forceNewDeployment=True
+          )
+    isEnd: true
