@@ -5,7 +5,7 @@ module "odoo_complete" {
 
   # general
   name = "odoo-complete"
-  tags = { "Environment" : "prod" }
+  tags = { "Environment" : "complete" }
 
   # domain
   route53_hosted_zone = "Z01208793QY6JAD0UY432"
@@ -24,6 +24,14 @@ module "odoo_complete" {
   ecs_instance_type      = "t3.large"
   ecs_task_memory        = 1024
   ecs_container_insights = true
+
+  # odoo
+  odoo_version      = "16"
+  odoo_docker_image = "bitnami/odoo"
+  odoo_root_email   = "user@example.com"
+  no_database_list  = true
+  load_language     = ["es_AR"]
+  init_modules      = ["mail", "notes"]
 
   # custom modules
   python_requirements_file  = "./requirements.txt"

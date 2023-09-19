@@ -29,8 +29,9 @@ To [manage custom modules](docs/custom_modules_management.md):
 module "odoo_simple" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
 
-  name = "odoo"
-  tags = { "Environment" : "prod" }
+  name            = "odoo"
+  odoo_root_email = "user@example.com"
+  tags            = { "Environment" : "prod" }
 }
 
 # You can use a domain hosted in route 53 for odoo
@@ -45,6 +46,7 @@ module "odoo_custom_domain" {
 ```
 
 **Usage outside us-east-1**
+
 ```hcl
 provider "aws" { region = "us-east-2" }
 
@@ -62,6 +64,7 @@ module "odoo_simple" {
 
   route53_hosted_zone = "Z01208793QY6JAD0UY432"
   odoo_domain         = "odoo.example.com"
+  odoo_root_email     = "user@example.com"
   acm_cert_use1       = module.acm.acm_certificate_arn
 }
 
@@ -81,9 +84,12 @@ module "acm" {
 ```
 
 **Usage with custom modules**
+
 ```hcl
 module "odoo_custom_modules" {
   source = "git@github.com:renaiss-io/terraform-aws-odoo.git"
+
+  odoo_root_email = "user@example.com"
 
   # Custom modules files
   # If this var is provided, the files are stored in s3
