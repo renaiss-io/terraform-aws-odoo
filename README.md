@@ -1,4 +1,4 @@
-# Odoo in AWS
+# Odoo in AWS by [Renaiss](https://renaiss.io/)
 
 This module deploys [odoo](https://odoo.com) in [AWS](https://aws.amazon.com/) using:
 
