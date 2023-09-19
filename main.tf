@@ -626,7 +626,7 @@ module "ecs_service" {
         },
       ]
 
-      entry_point = concat(
+      command = concat(
         ["/opt/bitnami/scripts/odoo/run.sh"],
         (var.no_database_list) ? ["--no-database-list"] : [] ,
         length(var.init_modules) > 0 ? concat(["--init"] , join(",", var.init_modules)) : [],
