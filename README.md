@@ -1,4 +1,3 @@
-<!-- BEGIN_TF_DOCS -->
 # Odoo in AWS
 
 This module deploys [odoo](https://odoo.com) in [AWS](https://aws.amazon.com/) using:
@@ -22,37 +21,6 @@ To [manage custom modules](docs/custom_modules_management.md):
 ## Architecture reference
 
 ![Architecture diagram](images/Main.svg)
-
-## Requirements
-
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.5.2 |
-| <a name="requirement_aws"></a> [aws](#requirement_aws) | >= 5.00 |
-| <a name="requirement_random"></a> [random](#requirement_random) | >= 3.1.0 |
-
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_acm"></a> [acm](#module_acm) | terraform-aws-modules/acm/aws | ~> 4.0 |
-| <a name="module_alb"></a> [alb](#module_alb) | terraform-aws-modules/alb/aws | ~> 8.0 |
-| <a name="module_autoscaling"></a> [autoscaling](#module_autoscaling) | terraform-aws-modules/autoscaling/aws | ~> 6.5 |
-| <a name="module_autoscaling_sg"></a> [autoscaling_sg](#module_autoscaling_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
-| <a name="module_cdn"></a> [cdn](#module_cdn) | terraform-aws-modules/cloudfront/aws | ~> 3.2 |
-| <a name="module_datasync_role"></a> [datasync_role](#module_datasync_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
-| <a name="module_db"></a> [db](#module_db) | terraform-aws-modules/rds/aws | ~> 6.1 |
-| <a name="module_db_security_group"></a> [db_security_group](#module_db_security_group) | terraform-aws-modules/security-group/aws | ~> 5.0 |
-| <a name="module_ecs_cluster"></a> [ecs_cluster](#module_ecs_cluster) | terraform-aws-modules/ecs/aws | ~> 5.2 |
-| <a name="module_ecs_service"></a> [ecs_service](#module_ecs_service) | terraform-aws-modules/ecs/aws//modules/service | ~> 5.2 |
-| <a name="module_efs"></a> [efs](#module_efs) | terraform-aws-modules/efs/aws | ~> 1.2 |
-| <a name="module_eventbridge"></a> [eventbridge](#module_eventbridge) | terraform-aws-modules/eventbridge/aws | ~> 2.3.0 |
-| <a name="module_image_builder_role"></a> [image_builder_role](#module_image_builder_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
-| <a name="module_image_builder_sg"></a> [image_builder_sg](#module_image_builder_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
-| <a name="module_lambda_image_builder"></a> [lambda_image_builder](#module_lambda_image_builder) | terraform-aws-modules/lambda/aws | ~> 6.0.0 |
-| <a name="module_s3_bucket"></a> [s3_bucket](#module_s3_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 3.14 |
-| <a name="module_ses_user"></a> [ses_user](#module_ses_user) | terraform-aws-modules/iam/aws//modules/iam-user | ~> 5.27 |
-| <a name="module_vpc"></a> [vpc](#module_vpc) | terraform-aws-modules/vpc/aws | ~> 5.0 |
 
 ## Usage
 
@@ -135,6 +103,38 @@ module "odoo_custom_modules" {
 >
 > **source = "git<span>@</span>github.com:renaiss-io/terraform-aws-odoo.git?ref=v1.0.0"**
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.5.2 |
+| <a name="requirement_aws"></a> [aws](#requirement_aws) | >= 5.00 |
+| <a name="requirement_random"></a> [random](#requirement_random) | >= 3.1.0 |
+
+## Modules
+
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_acm"></a> [acm](#module_acm) | terraform-aws-modules/acm/aws | ~> 4.0 |
+| <a name="module_alb"></a> [alb](#module_alb) | terraform-aws-modules/alb/aws | ~> 8.0 |
+| <a name="module_autoscaling"></a> [autoscaling](#module_autoscaling) | terraform-aws-modules/autoscaling/aws | ~> 6.5 |
+| <a name="module_autoscaling_sg"></a> [autoscaling_sg](#module_autoscaling_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
+| <a name="module_cdn"></a> [cdn](#module_cdn) | terraform-aws-modules/cloudfront/aws | ~> 3.2 |
+| <a name="module_datasync_role"></a> [datasync_role](#module_datasync_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
+| <a name="module_db"></a> [db](#module_db) | terraform-aws-modules/rds/aws | ~> 6.1 |
+| <a name="module_db_security_group"></a> [db_security_group](#module_db_security_group) | terraform-aws-modules/security-group/aws | ~> 5.0 |
+| <a name="module_ecs_cluster"></a> [ecs_cluster](#module_ecs_cluster) | terraform-aws-modules/ecs/aws | ~> 5.2 |
+| <a name="module_ecs_service"></a> [ecs_service](#module_ecs_service) | terraform-aws-modules/ecs/aws//modules/service | ~> 5.2 |
+| <a name="module_efs"></a> [efs](#module_efs) | terraform-aws-modules/efs/aws | ~> 1.2 |
+| <a name="module_eventbridge"></a> [eventbridge](#module_eventbridge) | terraform-aws-modules/eventbridge/aws | ~> 2.3.0 |
+| <a name="module_image_builder_role"></a> [image_builder_role](#module_image_builder_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
+| <a name="module_image_builder_sg"></a> [image_builder_sg](#module_image_builder_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
+| <a name="module_lambda_image_builder"></a> [lambda_image_builder](#module_lambda_image_builder) | terraform-aws-modules/lambda/aws | ~> 6.0.0 |
+| <a name="module_s3_bucket"></a> [s3_bucket](#module_s3_bucket) | terraform-aws-modules/s3-bucket/aws | ~> 3.14 |
+| <a name="module_ses_user"></a> [ses_user](#module_ses_user) | terraform-aws-modules/iam/aws//modules/iam-user | ~> 5.27 |
+| <a name="module_vpc"></a> [vpc](#module_vpc) | terraform-aws-modules/vpc/aws | ~> 5.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
@@ -151,8 +151,8 @@ module "odoo_custom_modules" {
 | <a name="input_ecs_instance_type"></a> [ecs_instance_type](#input_ecs_instance_type) | Instance type for ECS instances | `string` | `"t3.micro"` | no |
 | <a name="input_ecs_task_memory"></a> [ecs_task_memory](#input_ecs_task_memory) | Memory to allocate for the task (in GB) | `number` | `400` | no |
 | <a name="input_extra_files_filter"></a> [extra_files_filter](#input_extra_files_filter) | Paths to ignore when processing modules and python dependencies | `list(string)` | <pre>[<br>  ".git"<br>]</pre> | no |
-| <a name="input_init_modules"></a> [init_modules](#input_init_modules) | Initialize some modules upon deployment success | `list(string)` | `[]` | no |
-| <a name="input_load_language"></a> [load_language](#input_load_language) | Allow automatic installation of a language. List of languages available at https://github.com/odoo/odoo/blob/16.0/odoo/tools/translate.py | `list(string)` | `[]` | no |
+| <a name="input_init_modules"></a> [init_modules](#input_init_modules) | Initialize some modules upon deployment success | `list(string)` | <pre>[<br>  "mail"<br>]</pre> | no |
+| <a name="input_load_language"></a> [load_language](#input_load_language) | Allow automatic installation of a language. List of languages available at https://github.com/odoo/odoo/blob/16.0/odoo/tools/translate.py | `list(string)` | <pre>[<br>  "es_AR"<br>]</pre> | no |
 | <a name="input_name"></a> [name](#input_name) | A name to use in all resources | `string` | `"odoo"` | no |
 | <a name="input_no_database_list"></a> [no_database_list](#input_no_database_list) | Enable/Disable exposing DB management capabilities in the login page | `bool` | `true` | no |
 | <a name="input_odoo_custom_modules_paths"></a> [odoo_custom_modules_paths](#input_odoo_custom_modules_paths) | Paths containing custom modules to install | `list(string)` | `[]` | no |
@@ -171,6 +171,7 @@ module "odoo_custom_modules" {
 | Name | Description |
 |------|-------------|
 | <a name="output_dns"></a> [dns](#output_dns) | DNS to access odoo |
+<!-- END_TF_DOCS -->
 
 ## Supporting documentation
 
@@ -181,4 +182,3 @@ module "odoo_custom_modules" {
 - [SES configuration](./docs/ses_as_mail_gateway)
 
 - [Costs of running Odoo in AWS](./docs/costs.md)
-<!-- END_TF_DOCS -->
