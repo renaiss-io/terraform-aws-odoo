@@ -46,7 +46,7 @@ To [manage custom modules](docs/custom_modules_management.md):
 | <a name="module_ecs_cluster"></a> [ecs_cluster](#module_ecs_cluster) | terraform-aws-modules/ecs/aws | ~> 5.2 |
 | <a name="module_ecs_service"></a> [ecs_service](#module_ecs_service) | terraform-aws-modules/ecs/aws//modules/service | ~> 5.2 |
 | <a name="module_efs"></a> [efs](#module_efs) | terraform-aws-modules/efs/aws | ~> 1.2 |
-| <a name="module_eventbridge_role"></a> [eventbridge_role](#module_eventbridge_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
+| <a name="module_eventbridge"></a> [eventbridge](#module_eventbridge) | terraform-aws-modules/eventbridge/aws | ~> 2.3.0 |
 | <a name="module_image_builder_role"></a> [image_builder_role](#module_image_builder_role) | terraform-aws-modules/iam/aws//modules/iam-assumable-role | ~> 5.27 |
 | <a name="module_image_builder_sg"></a> [image_builder_sg](#module_image_builder_sg) | terraform-aws-modules/security-group/aws | ~> 5.0 |
 | <a name="module_lambda_image_builder"></a> [lambda_image_builder](#module_lambda_image_builder) | terraform-aws-modules/lambda/aws | ~> 6.0.0 |
@@ -151,7 +151,10 @@ module "odoo_custom_modules" {
 | <a name="input_ecs_instance_type"></a> [ecs_instance_type](#input_ecs_instance_type) | Instance type for ECS instances | `string` | `"t3.micro"` | no |
 | <a name="input_ecs_task_memory"></a> [ecs_task_memory](#input_ecs_task_memory) | Memory to allocate for the task (in GB) | `number` | `400` | no |
 | <a name="input_extra_files_filter"></a> [extra_files_filter](#input_extra_files_filter) | Paths to ignore when processing modules and python dependencies | `list(string)` | <pre>[<br>  ".git"<br>]</pre> | no |
+| <a name="input_init_modules"></a> [init_modules](#input_init_modules) | Initialize some modules upon deployment success | `list(string)` | `[]` | no |
+| <a name="input_load_language"></a> [load_language](#input_load_language) | Allow automatic installation of a language. List of languages available at https://github.com/odoo/odoo/blob/16.0/odoo/tools/translate.py | `list(string)` | `[]` | no |
 | <a name="input_name"></a> [name](#input_name) | A name to use in all resources | `string` | `"odoo"` | no |
+| <a name="input_no_database_list"></a> [no_database_list](#input_no_database_list) | Enable/Disable exposing DB management capabilities in the login page | `bool` | `true` | no |
 | <a name="input_odoo_custom_modules_paths"></a> [odoo_custom_modules_paths](#input_odoo_custom_modules_paths) | Paths containing custom modules to install | `list(string)` | `[]` | no |
 | <a name="input_odoo_db_name"></a> [odoo_db_name](#input_odoo_db_name) | Main odoo DB name | `string` | `"odoo"` | no |
 | <a name="input_odoo_docker_image"></a> [odoo_docker_image](#input_odoo_docker_image) | Odoo docker image to use | `string` | `"bitnami/odoo"` | no |
