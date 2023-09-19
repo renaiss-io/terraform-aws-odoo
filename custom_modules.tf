@@ -556,7 +556,7 @@ module "lambda_image_builder" {
   source_path                       = "${path.module}/lambdas/trigger_image_builder.py"
   cloudwatch_logs_retention_in_days = 14
   attach_policy_statements          = true
-
+  create_current_version_allowed_triggers = false
   allowed_triggers = {
     s3 = {
       principal  = "s3.amazonaws.com"
