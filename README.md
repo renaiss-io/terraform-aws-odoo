@@ -185,6 +185,6 @@ module "odoo_custom_modules" {
 
 - [Custom modules management](./docs/custom_modules_management.md)
 
-- [SES configuration](./docs/ses_as_mail_gateway)
+- [SES configuration](./docs/ses_as_mail_gateway.md)
 
 - [Costs of running Odoo in AWS](./docs/costs.md)
